@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) <FILL IN: year> <FILL IN: author>
+// Copyright (C) 2026 touchfalls
 
 plugins {
     id("com.gradleup.shadow") version "9.6.1" apply false

@@ -4,7 +4,7 @@ main: io.github.lifesmp.paper.LifeSmpPaperPlugin
 api-version: '1.21'
 description: Hardcore Life SMP plugin for Paper Minecraft servers.
 authors:
-  - '<FILL IN: author>'
+  - 'touchfalls'
 permissions:
   lifesmp.admin:
     description: Grants administrative access to /life arena, /life set, /life reload, /life pardon, /life reset, and /life event commands.

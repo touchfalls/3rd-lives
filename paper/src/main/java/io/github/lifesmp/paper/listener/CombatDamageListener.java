@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) <FILL IN: year> <FILL IN: author>
+// Copyright (C) 2026 touchfalls
 
 package io.github.lifesmp.paper.listener;
 

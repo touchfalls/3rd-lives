@@ -5,10 +5,10 @@
   "name": "Life SMP",
   "description": "Hardcore Life SMP mechanics with 3 lives, PvP policy engine, life gifting, arenas, and online regeneration.",
   "authors": [
-    "<FILL IN: author>"
+    "touchfalls"
   ],
   "contact": {
-    "homepage": "<FILL IN: repository URL>"
+    "homepage": "https://github.com/touchfalls/3rd-lives"
   },
   "license": "GPL-3.0-or-later",
   "environment": "server",

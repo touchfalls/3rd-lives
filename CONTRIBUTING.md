@@ -4,7 +4,7 @@ Thank you for your interest in contributing to Life SMP! We welcome contribution
 
 ## 1. Development Prerequisites
 
-- **Java Development Kit (JDK):** Version 21 (Temurin or OpenJDK recommended)
+- **Java Development Kit (JDK):** JDK 25 or newer to run Gradle (required by Fabric Loom) and JDK 21 as the compile toolchain (Temurin or OpenJDK recommended)
 - **Gradle:** 8.8+ or bundled Gradle Wrapper (`./gradlew`)
 - **Git**
 

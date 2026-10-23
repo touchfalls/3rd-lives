@@ -307,7 +307,7 @@ Core services: `LifeEngine`, `PvPPolicyEngine`, `RegenerationService`, `GiftServ
 
 ### Building
 
-Requires JDK 21. The Gradle wrapper downloads everything else.
+Requires two JDKs: JDK 25 or newer to run Gradle (Fabric Loom 1.19 does not start on older JVMs) and JDK 21, which Gradle uses as the toolchain to compile the sources. The produced jars run on Java 21. The Gradle wrapper downloads everything else. If Gradle does not find JDK 21 on its own, point it to it with `-Porg.gradle.java.installations.paths=/path/to/jdk-21`.
 
 ```bash
 ./gradlew clean dist

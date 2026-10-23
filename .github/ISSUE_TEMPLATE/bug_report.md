@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 ### Environment
 - **Platform:** Paper / Fabric
 - **Minecraft Version:** 1.21.1
-- **Plugin/Mod Version:** 1.0.1
+- **Plugin/Mod Version:** 1.0.2
 - **Java Version:** 21 (e.g. Temurin 21.0.2)
 - **Other Plugins / Mods installed:** (List relevant combat/tab/scoreboard plugins if applicable)
 

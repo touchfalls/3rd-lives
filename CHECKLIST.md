@@ -70,7 +70,7 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
   - **Verification:** Start a Fabric server, ban a player and confirm the gray `[DEAD]` entry appears in TAB (accessor path). Before moving to a newer JDK, run `./gradlew :fabric:test` and check that `FabricTabPresenterTest` still passes, or replace the fallback with a test-only mixin environment.
 
 - [ ] **Dead TAB entry after the kick**
-  - **What:** The fake `[DEAD]` entry uses the banned player's UUID. The game removes that UUID for everyone when the player disconnects, so the entry is shown `QUIT_GRACE_TICKS` (Paper, 5 ticks) / `QUIT_GRACE_MS` (Fabric, 250 ms) after the kick.
+  - **What:** The fake `[DEAD]` entry uses the banned player's UUID. The game removes that UUID for everyone when the player disconnects, so the entry is shown `QUIT_GRACE_TICKS` (Paper, 10 ticks) / `QUIT_GRACE_MS` (Fabric, 500 ms) after the kick.
   - **Where:** `io.github.lifesmp.paper.platform.PaperTabPresenter#showDead`, `io.github.lifesmp.fabric.platform.FabricTabPresenter#showDead`.
   - **Verification:** With two players online, let one lose the last life. The other player must see the gray `[DEAD]` entry at the bottom of TAB after the kick, and a third player who joins later must see it too. Run `/life pardon` right after the death: the entry must not come back. Repeat on both platforms. If the entry still disappears, raise the grace period.
 

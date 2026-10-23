@@ -44,7 +44,7 @@ public final class FabricTabPresenter implements TabPresenter {
      * Vanilla broadcasts a remove packet for the UUID of a player who disconnects. A banned player's
      * fake TAB entry uses the same UUID, so it is shown only after this grace period.
      */
-    private static final long QUIT_GRACE_MS = 250L;
+    private static final long QUIT_GRACE_MS = 500L;
 
     private static final sun.misc.Unsafe UNSAFE;
     private static final long ENTRIES_FIELD_OFFSET;

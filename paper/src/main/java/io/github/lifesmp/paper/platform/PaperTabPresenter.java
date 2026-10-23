@@ -38,7 +38,7 @@ public final class PaperTabPresenter implements TabPresenter {
      * Vanilla broadcasts a remove packet for the UUID of a player who disconnects. A banned player's
      * fake TAB entry uses the same UUID, so it is shown only after this grace period.
      */
-    private static final long QUIT_GRACE_TICKS = 5L;
+    private static final long QUIT_GRACE_TICKS = 10L;
 
     private final Plugin plugin;
     private final Supplier<LifeConfig> configSupplier;

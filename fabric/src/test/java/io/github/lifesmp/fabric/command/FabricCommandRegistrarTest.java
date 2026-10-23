@@ -272,8 +272,39 @@ class FabricCommandRegistrarTest {
         assertThat(profile.getLives()).isEqualTo(1);
         assertThat(profile.getBannedUntil()).isNull();
 
-        int unknownResult = dispatcher.execute("life pardon UnknownPlayer", adminSource);
-        assertThat(unknownResult).isEqualTo(0);
+        adminSource.feedback.clear();
+        dispatcher.execute("life pardon UnknownPlayer", adminSource);
+        assertThat(String.join("\n", adminSource.feedback)).contains("UnknownPlayer");
+    }
+
+    @Test
+    @DisplayName("Admin command /life pardon finds an offline banned player by last known name")
+    void executePardonForOfflinePlayer() throws Exception {
+        UUID bannedUuid = UUID.randomUUID();
+        LifeProfile profile = profileCache.getOrLoadProfile(bannedUuid, 3, Instant.now()).join();
+        profile.setLastName("OfflinePlayer");
+        profile.setLives(0);
+        profile.setBannedUntil(Instant.now().plusSeconds(3600));
+
+        TestSource adminSource = new TestSource("Admin", UUID.randomUUID(), true, 4);
+        dispatcher.execute("life pardon OfflinePlayer", adminSource);
+
+        assertThat(profile.getLives()).isEqualTo(1);
+        assertThat(profile.getBannedUntil()).isNull();
+        assertThat(String.join("\n", adminSource.feedback)).contains("OfflinePlayer");
+    }
+
+    @Test
+    @DisplayName("Admin command /life set changes lives of an offline player by last known name")
+    void executeSetForOfflinePlayer() throws Exception {
+        UUID playerUuid = UUID.randomUUID();
+        LifeProfile profile = profileCache.getOrLoadProfile(playerUuid, 3, Instant.now()).join();
+        profile.setLastName("Sleeper");
+
+        TestSource adminSource = new TestSource("Admin", UUID.randomUUID(), true, 4);
+        dispatcher.execute("life set Sleeper 2", adminSource);
+
+        assertThat(profile.getLives()).isEqualTo(2);
     }
 
     @Test

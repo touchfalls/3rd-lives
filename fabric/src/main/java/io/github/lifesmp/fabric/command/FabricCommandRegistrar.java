@@ -22,7 +22,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 /**
@@ -291,65 +293,69 @@ public final class FabricCommandRegistrar<S> {
         return 1;
     }
 
-    private int executePardon(S source, String targetName) {
-        UUID targetUuid = adapter.getPlayerUuidByName(targetName);
-        if (targetUuid == null) {
-            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("admin.pardon-player-not-found", "player", targetName));
-            return 0;
+    /**
+     * Resolves a player name to a UUID: online players first, then the last known name stored in the database,
+     * so that admin commands also reach offline and banned players.
+     */
+    private CompletableFuture<Optional<UUID>> resolvePlayerUuid(@NotNull String name) {
+        UUID online = adapter.getPlayerUuidByName(name);
+        if (online != null) {
+            return CompletableFuture.completedFuture(Optional.of(online));
         }
+        return lifeEngine.getProfileCache().findUuidByLastName(name);
+    }
 
+    private int executePardon(S source, String targetName) {
         LifeConfig config = server.getLifeConfig();
-        lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
-            switch (result.status()) {
-                case SUCCESS -> {
-                    adapter.sendFeedback(source, config.formatMessage(
-                            "admin.pardon-success",
-                            java.util.Map.of("player", targetName, "lives", "1")
-                    ));
-                    server.getBridge().updateVisuals(targetUuid, 1);
-                }
-                case NOT_BANNED -> {
-                    adapter.sendFeedback(source, config.formatMessage(
-                            "admin.pardon-not-banned",
-                            "player", targetName
-                    ));
-                }
-                case NOT_FOUND -> {
-                    adapter.sendFeedback(source, config.formatMessage(
-                            "admin.pardon-player-not-found",
-                            "player", targetName
-                    ));
-                }
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                adapter.sendFeedback(source, config.formatMessage("admin.pardon-player-not-found", "player", targetName));
+                return;
             }
+            UUID targetUuid = optUuid.get();
+            lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
+                switch (result.status()) {
+                    case SUCCESS -> {
+                        adapter.sendFeedback(source, config.formatMessage(
+                                "admin.pardon-success",
+                                java.util.Map.of("player", targetName, "lives", "1")
+                        ));
+                        server.getBridge().updateVisuals(targetUuid, 1);
+                    }
+                    case NOT_BANNED -> adapter.sendFeedback(source, config.formatMessage(
+                            "admin.pardon-not-banned", "player", targetName));
+                    case NOT_FOUND -> adapter.sendFeedback(source, config.formatMessage(
+                            "admin.pardon-player-not-found", "player", targetName));
+                }
+            });
         });
         return 1;
     }
 
     private int executeReset(S source, String targetName) {
-        UUID targetUuid = adapter.getPlayerUuidByName(targetName);
-        if (targetUuid == null) {
-            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("admin.reset-player-not-found", "player", targetName));
-            return 0;
-        }
-
         LifeConfig config = server.getLifeConfig();
-        lifeEngine.reset(targetUuid, config).thenAccept(result -> {
-            if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
-                adapter.sendFeedback(source, config.formatMessage(
-                        "admin.reset-success",
-                        java.util.Map.of(
-                                "player", targetName,
-                                "lives", String.valueOf(config.getMaxLives()),
-                                "max", String.valueOf(config.getMaxLives())
-                        )
-                ));
-                server.getBridge().updateVisuals(targetUuid, config.getMaxLives());
-            } else {
-                adapter.sendFeedback(source, config.formatMessage(
-                        "admin.reset-player-not-found",
-                        "player", targetName
-                ));
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                adapter.sendFeedback(source, config.formatMessage("admin.reset-player-not-found", "player", targetName));
+                return;
             }
+            UUID targetUuid = optUuid.get();
+            lifeEngine.reset(targetUuid, config).thenAccept(result -> {
+                if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
+                    adapter.sendFeedback(source, config.formatMessage(
+                            "admin.reset-success",
+                            java.util.Map.of(
+                                    "player", targetName,
+                                    "lives", String.valueOf(config.getMaxLives()),
+                                    "max", String.valueOf(config.getMaxLives())
+                            )
+                    ));
+                    server.getBridge().updateVisuals(targetUuid, config.getMaxLives());
+                } else {
+                    adapter.sendFeedback(source, config.formatMessage(
+                            "admin.reset-player-not-found", "player", targetName));
+                }
+            });
         });
         return 1;
     }
@@ -432,14 +438,13 @@ public final class FabricCommandRegistrar<S> {
     }
 
     private int executeSetLives(S source, String targetName, int lives) {
-        UUID targetUuid = adapter.getPlayerUuidByName(targetName);
-        if (targetUuid == null) {
-            adapter.sendFeedback(source, "Player not found.");
-            return 0;
-        }
-
-        lifeEngine.adminSetLives(targetUuid, lives, server.getLifeConfig()).thenRun(() -> {
-            adapter.sendFeedback(source, "Set lives of " + targetName + " to " + lives + ".");
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                adapter.sendFeedback(source, "Player not found.");
+                return;
+            }
+            lifeEngine.adminSetLives(optUuid.get(), lives, server.getLifeConfig()).thenRun(() ->
+                    adapter.sendFeedback(source, "Set lives of " + targetName + " to " + lives + "."));
         });
         return 1;
     }

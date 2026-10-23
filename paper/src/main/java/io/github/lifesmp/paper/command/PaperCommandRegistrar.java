@@ -34,7 +34,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Registers modern Brigadier commands for Life SMP via Paper LifecycleEvents.COMMANDS.
@@ -496,85 +498,114 @@ public final class PaperCommandRegistrar {
     }
 
     private int executeSetLives(CommandSourceStack source, String targetName, int lives) {
-        Player target = Bukkit.getPlayerExact(targetName);
-        if (target == null) {
-            source.getSender().sendMessage(Component.text("Player not found."));
-            return 0;
-        }
+        CommandSender sender = source.getSender();
+        LifeConfig config = plugin.getLifeConfig();
 
-        lifeEngine.adminSetLives(target.getUniqueId(), lives, plugin.getLifeConfig()).thenRun(() -> {
-            source.getSender().sendMessage(render(
-                    "admin.set-lives",
-                    Placeholder.unparsed("player", target.getName()),
-                    Placeholder.unparsed("lives", String.valueOf(lives))
-            ));
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                sender.sendMessage(Component.text("Player not found."));
+                return;
+            }
+            UUID targetUuid = optUuid.get();
+            lifeEngine.adminSetLives(targetUuid, lives, config).thenRun(() -> {
+                sender.sendMessage(render(
+                        config,
+                        "admin.set-lives",
+                        Placeholder.unparsed("player", targetName),
+                        Placeholder.unparsed("lives", String.valueOf(lives))
+                ));
+                Player onlinePlayer = Bukkit.getPlayer(targetUuid);
+                if (onlinePlayer != null && onlinePlayer.isOnline()) {
+                    plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, lives);
+                }
+            });
         });
         return 1;
     }
 
+    /**
+     * Resolves a player name to a UUID: online players first, then the last known name stored in the database.
+     * {@code Bukkit.getOfflinePlayer(String)} is avoided because it may block on a Mojang profile lookup.
+     */
+    private CompletableFuture<Optional<UUID>> resolvePlayerUuid(@NotNull String name) {
+        Player onlinePlayer = Bukkit.getPlayerExact(name);
+        if (onlinePlayer != null) {
+            return CompletableFuture.completedFuture(Optional.of(onlinePlayer.getUniqueId()));
+        }
+        return lifeEngine.getProfileCache().findUuidByLastName(name);
+    }
+
     private int executePardon(CommandSourceStack source, String targetName) {
         CommandSender sender = source.getSender();
-        Player onlinePlayer = Bukkit.getPlayerExact(targetName);
-        UUID targetUuid = onlinePlayer != null ? onlinePlayer.getUniqueId() : Bukkit.getOfflinePlayer(targetName).getUniqueId();
         LifeConfig config = plugin.getLifeConfig();
 
-        lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
-            switch (result.status()) {
-                case SUCCESS -> {
-                    sender.sendMessage(render(
-                            config,
-                            "admin.pardon-success",
-                            Placeholder.unparsed("player", targetName),
-                            Placeholder.unparsed("lives", "1")
-                    ));
-                    if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                        plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, 1);
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                sender.sendMessage(render(config, "admin.pardon-player-not-found", Placeholder.unparsed("player", targetName)));
+                return;
+            }
+            UUID targetUuid = optUuid.get();
+            lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
+                switch (result.status()) {
+                    case SUCCESS -> {
+                        sender.sendMessage(render(
+                                config,
+                                "admin.pardon-success",
+                                Placeholder.unparsed("player", targetName),
+                                Placeholder.unparsed("lives", "1")
+                        ));
+                        Player onlinePlayer = Bukkit.getPlayer(targetUuid);
+                        if (onlinePlayer != null && onlinePlayer.isOnline()) {
+                            plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, 1);
+                        }
                     }
-                }
-                case NOT_BANNED -> {
-                    sender.sendMessage(render(
+                    case NOT_BANNED -> sender.sendMessage(render(
                             config,
                             "admin.pardon-not-banned",
                             Placeholder.unparsed("player", targetName)
                     ));
-                }
-                case NOT_FOUND -> {
-                    sender.sendMessage(render(
+                    case NOT_FOUND -> sender.sendMessage(render(
                             config,
                             "admin.pardon-player-not-found",
                             Placeholder.unparsed("player", targetName)
                     ));
                 }
-            }
+            });
         });
         return 1;
     }
 
     private int executeReset(CommandSourceStack source, String targetName) {
         CommandSender sender = source.getSender();
-        Player onlinePlayer = Bukkit.getPlayerExact(targetName);
-        UUID targetUuid = onlinePlayer != null ? onlinePlayer.getUniqueId() : Bukkit.getOfflinePlayer(targetName).getUniqueId();
         LifeConfig config = plugin.getLifeConfig();
 
-        lifeEngine.reset(targetUuid, config).thenAccept(result -> {
-            if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
-                sender.sendMessage(render(
-                        config,
-                        "admin.reset-success",
-                        Placeholder.unparsed("player", targetName),
-                        Placeholder.unparsed("lives", String.valueOf(config.getMaxLives())),
-                        Placeholder.unparsed("max", String.valueOf(config.getMaxLives()))
-                ));
-                if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                    plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, config.getMaxLives());
-                }
-            } else {
-                sender.sendMessage(render(
-                        config,
-                        "admin.reset-player-not-found",
-                        Placeholder.unparsed("player", targetName)
-                ));
+        resolvePlayerUuid(targetName).thenAccept(optUuid -> {
+            if (optUuid.isEmpty()) {
+                sender.sendMessage(render(config, "admin.reset-player-not-found", Placeholder.unparsed("player", targetName)));
+                return;
             }
+            UUID targetUuid = optUuid.get();
+            lifeEngine.reset(targetUuid, config).thenAccept(result -> {
+                if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
+                    sender.sendMessage(render(
+                            config,
+                            "admin.reset-success",
+                            Placeholder.unparsed("player", targetName),
+                            Placeholder.unparsed("lives", String.valueOf(config.getMaxLives())),
+                            Placeholder.unparsed("max", String.valueOf(config.getMaxLives()))
+                    ));
+                    Player onlinePlayer = Bukkit.getPlayer(targetUuid);
+                    if (onlinePlayer != null && onlinePlayer.isOnline()) {
+                        plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, config.getMaxLives());
+                    }
+                } else {
+                    sender.sendMessage(render(
+                            config,
+                            "admin.reset-player-not-found",
+                            Placeholder.unparsed("player", targetName)
+                    ));
+                }
+            });
         });
         return 1;
     }

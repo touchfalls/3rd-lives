@@ -302,9 +302,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
                         @Override
                         public boolean hasPermission(@NotNull CommandSourceStack source, int level) {
-                            if (!source.isPlayer()) return true;
-                            if (source.getServer() == null) return false;
-                            return source.getServer().getPlayerList().isOp(source.getPlayer().getGameProfile());
+                            return source.hasPermission(level);
                         }
 
                         @Override

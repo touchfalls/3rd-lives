@@ -1,0 +1,53 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Build outputs and distributions
+dist/
+out/
+bin/
+
+# IDE & Editor configuration
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# SQLite databases & temp storage
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs & crash dumps
+*.log
+logs/
+hs_err_pid*
+replay_pid*
+
+# Minecraft server run directories & caches
+run/
+test-server/
+server/
+cache/
+.fabric/
+.paperweight/

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "lifesmp",
+  "version": "${version}",
+  "name": "Life SMP",
+  "description": "Hardcore Life SMP mechanics with 3 lives, PvP policy engine, life gifting, arenas, and online regeneration.",
+  "authors": [
+    "<FILL IN: author>"
+  ],
+  "contact": {
+    "homepage": "<FILL IN: repository URL>"
+  },
+  "license": "GPL-3.0-or-later",
+  "environment": "server",
+  "entrypoints": {
+    "server": [
+      "io.github.lifesmp.fabric.LifeSmpFabricServer"
+    ]
+  },
+  "mixins": [
+    "lifesmp.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}

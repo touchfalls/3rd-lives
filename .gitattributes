@@ -1,0 +1,36 @@
+# Auto-detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Explicit source file normalization
+*.java text eol=lf diff=java
+*.kt text eol=lf
+*.kts text eol=lf
+*.gradle text eol=lf
+*.properties text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.ini text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Executable shell scripts
+gradlew text eol=lf -crlf diff
+*.sh text eol=lf -crlf
+
+# Windows batch scripts
+gradlew.bat text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets
+*.jar binary
+*.class binary
+*.db binary
+*.sqlite binary
+*.png binary
+*.ico binary
+*.zip binary

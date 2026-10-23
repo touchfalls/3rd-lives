@@ -1,0 +1,51 @@
+name: Build & Verify
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Test (Java 21)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Run Checks & Tests
+        run: ./gradlew check
+
+      - name: Build Distribution Jars
+        run: ./gradlew dist
+
+      - name: Verify Binary Distribution Jars
+        run: ./gradlew verifyJars
+
+      - name: Archive Distribution Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifesmp-artifacts
+          path: dist/
+          retention-days: 14

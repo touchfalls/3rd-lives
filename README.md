@@ -27,7 +27,7 @@ Red players are protected from being hunted: players with more lives cannot atta
 - Regeneration based on online time, paused while the player is AFK.
 - Banned players shown as gray `[DEAD]` entries at the bottom of the TAB list.
 - Admin commands to pardon, reset or set lives.
-- All texts configurable with MiniMessage; reload without restart.
+- Messages in English, Russian, French, Italian and Spanish, each overridable with MiniMessage; reload without restart.
 - SQLite storage, written off the main thread.
 
 ## Rules
@@ -66,7 +66,7 @@ Outside arenas and outside a global PvP event:
 - When the last life is lost, the player is kicked and banned for `ban-hours` hours (default 24).
 - Connection attempts during the ban are refused with the remaining time.
 - On the first login after the ban ends, the player gets `restored-lives-after-ban` lives (default 3) and an empty timer.
-- `/life pardon <player>` ends the ban early. The pardoned player gets 1 life, not a full set. A player pardoned while offline is notified on the next login. On Fabric, see [Known limitations](#known-limitations).
+- `/life pardon <player>` ends the ban early. The pardoned player gets 1 life, not a full set. A player pardoned while offline is notified on the next login.
 - `/life reset <player>` clears any ban and restores `max-lives` lives.
 - The ban is kept by Life SMP itself, not in the server's ban list, so the vanilla `/pardon` command does not affect it.
 
@@ -147,7 +147,7 @@ On Paper, admin commands require the `lifesmp.admin` permission (default: operat
 | `/life arena disable <name>` | Disable an arena | `lifesmp.admin` | operators |
 | `/life arena remove <name>` | Delete an arena | `lifesmp.admin` | operators |
 
-On Paper, `/lives` and `/lsmp` are aliases of `/life`. On Paper, `pardon` and `reset` also accept names of offline players who have joined before; `set` requires the player to be online. On Fabric, all three require the player to be online.
+On Paper, `/lives` and `/lsmp` are aliases of `/life`. `pardon`, `reset` and `set` also accept names of offline players who have joined the server before.
 
 ## Configuration
 
@@ -160,6 +160,7 @@ The file is created with default values on first start. Both files use the same 
 
 | Key | Default | Description |
 |---|---|---|
+| `language` | `en` | Language of the built-in messages: `en`, `ru`, `fr`, `it`, `es` |
 | `prefix` | `<dark_gray>[<gradient:#55FF55:#FFAA00>Life</gradient>]</dark_gray> ` | Text inserted for `{prefix}` in messages |
 | `max-lives` | `3` | Maximum number of lives |
 | `ban-hours` | `24.0` | Ban length in real hours after losing the last life |
@@ -173,11 +174,11 @@ The file is created with default values on first start. Both files use the same 
 | `dead-tab.enabled` | `true` | Show banned players in the TAB list |
 | `dead-tab.format` | `<gray>☠ {player}</gray> <dark_gray>[DEAD]</dark_gray>` | MiniMessage format of a TAB entry; supports `{player}` and `{time}` |
 | `dead-tab.color` | `#AAAAAA` | Color of dead entries |
-| `dead-tab.show-time` | `false` (Paper), `true` (Fabric) | Refresh dead entries every 60 seconds so that `{time}` stays current |
+| `dead-tab.show-time` | `false` | Refresh dead entries every 60 seconds so that `{time}` stays current |
 | `dead-tab.max-entries` | `50` | Maximum number of dead entries shown |
 | `dead-tab.sort-last` | `true` | Place dead entries below all living players |
 | `colors.3`, `colors.2`, `colors.1`, `colors.0` | `#55FF55`, `#FFAA00`, `#FF5555`, `#AAAAAA` | Name color for 3, 2, 1 and 0 lives |
-| `messages.<key>` | see the file | Player-facing messages |
+| `messages.<key>` | empty | Overrides for single messages of the selected language |
 
 Values below a safe minimum are raised to it: for example `max-lives` and `restored-lives-after-ban` are at least 1.
 
@@ -187,7 +188,36 @@ Run `/life reload` after editing the file. Regeneration progress is kept: when a
 
 ### Messages
 
-Messages use [MiniMessage](https://docs.advntr.dev/minimessage/format.html) syntax. Message keys must not be renamed. A key removed from the file falls back to its built-in default; `arena.*` and `event.*` have no built-in default, so keep them in the file.
+All player-facing texts come from built-in language files. Set `language` to one of the values below and run `/life reload`:
+
+| Value | Language |
+|---|---|
+| `en` | English (default) |
+| `ru` | Russian |
+| `fr` | French |
+| `it` | Italian |
+| `es` | Spanish |
+
+To change a single text, add its key to the `messages` section. An entry there takes precedence over the selected language; every other key keeps the built-in text. The built-in texts and the full list of keys are in [`core/src/main/resources/lifesmp/lang/`](core/src/main/resources/lifesmp/lang). Config files created by earlier builds may still contain a full `messages` section, which then overrides the language; delete that section to use `language`.
+
+Paper (`config.yml`):
+
+```yaml
+language: ru
+messages:
+  gift.no-pending: "{prefix}<red>No gift is waiting for you.</red>"
+```
+
+Fabric (`config.json`):
+
+```json
+"language": "ru",
+"messages": {
+  "gift.no-pending": "{prefix}<red>No gift is waiting for you.</red>"
+}
+```
+
+Messages use [MiniMessage](https://docs.advntr.dev/minimessage/format.html) syntax. Message keys must not be renamed.
 
 | Placeholder | Meaning |
 |---|---|
@@ -198,9 +228,9 @@ Messages use [MiniMessage](https://docs.advntr.dev/minimessage/format.html) synt
 | `{hearts}` | Heart symbols for the current lives |
 | `{time}` | Duration (ban length, remaining time, regeneration interval, request timeout) |
 | `{color}` | Color tag for the current number of lives |
-| `<name>`, `<world>`, `<x1>` ... `<z2>`, `<status>`, `<count>` | Arena and event messages |
+| `{name}`, `{world}`, `{x1}` ... `{z2}`, `{status}`, `{count}` | Arena and event messages |
 
-Message groups: `pvp.*`, `death.*`, `regen.*`, `gift.*`, `info.*` (output of `/life`), `arena.*`, `event.*`, `admin.*`.
+Message groups: `pvp.*`, `death.*`, `regen.*`, `gift.*`, `info.*` (output of `/life`), `help.*` (output of `/life help`), `arena.*`, `event.*`, `admin.*`, `command.*` (common command errors) and `time.*` (unit suffixes such as `h` and `m`).
 
 ## Data storage
 
@@ -237,13 +267,7 @@ Check that `dead-tab.enabled` is `true` and that the number of banned players do
 
 
 **How do I unban a player manually?**
-On Paper, run `/life pardon <player>` to unban with 1 life, or `/life reset <player>` to unban with full lives. Both work for offline players. On Fabric these commands currently find only online players, so a banned player cannot be unbanned by command; wait for the ban to end, or stop the server and edit the `players` table in `lifesmp.db` (back it up first). The vanilla `/pardon` command has no effect on Life SMP bans.
-
-The following statement has the same effect as `/life pardon`:
-
-```bash
-sqlite3 config/lifesmp/lifesmp.db "UPDATE players SET lives = 1, banned_until = NULL, online_seconds_since_last_loss = 0, gift_regen_active = 0 WHERE last_name = '<player name>';"
-```
+Run `/life pardon <player>` to unban with 1 life, or `/life reset <player>` to unban with full lives. Both work for offline players who have joined the server before. The vanilla `/pardon` command has no effect on Life SMP bans.
 
 **What happens when I update Life SMP?**
 Replace the jar and restart. The database schema is migrated automatically and existing data is kept. New config keys fall back to their defaults until you add them to the file. Back up `lifesmp.db` before updating.
@@ -253,10 +277,9 @@ Replace the jar and restart. The database schema is migrated automatically and e
 - Only Minecraft 1.21.1 is supported.
 - Testing on Paper forks other than Paper itself has been limited.
 - The Fabric mod must be installed on the server; installing it on a client has no effect.
+- French, Italian and Spanish translations have not yet been reviewed by native speakers. Corrections are welcome.
 - `/life set` accepts only values from 1 to 3, regardless of `max-lives`.
-- On Fabric, the help text and the feedback of `/life set`, `/life arena` and `/life event` are fixed English texts and do not use the `arena.*`, `event.*` and `admin.set-lives` messages.
 - On Fabric, `/lives` and `/lsmp` aliases are not registered.
-- On Fabric, `/life pardon`, `/life reset` and `/life set` work only for online players, which means banned players cannot be pardoned by command.
 
 ## For developers
 
@@ -338,10 +361,11 @@ To change the Minecraft version, update the hard-coded versions in `paper/build.
 
 ### Adding a message
 
-1. Add the default to `LifeConfig.createDefault()`.
-2. Add the same key to `paper/src/main/resources/config.yml` and `fabric/src/main/resources/config.json`.
-3. Send it through `LifeConfig.formatMessage(key, placeholders)` or `NotificationService`.
-4. Document new placeholders in this README.
+1. Add the key to all five files in `core/src/main/resources/lifesmp/lang/`. `MessageBundleTest` fails if a file is missing a key that `en.properties` has.
+2. Send it with `LifeConfig.formatMessage(key, placeholders)`; on Paper, `PaperCommandRegistrar.render` fills `{name}` placeholders through MiniMessage resolvers.
+3. Document new placeholders in this README.
+
+To add a language, create `<code>.properties` with all keys of `en.properties` and add the code to `MessageBundle.SUPPORTED_LANGUAGES` and to the check in `verifyJars`.
 
 ### Adding a platform
 
@@ -351,7 +375,7 @@ Create a new module that depends on `:core` and implement `NotificationService`,
 
 - No database IO on the server main thread. Repositories return `CompletableFuture` and run on the database executor; the main thread works with `LifeProfileCache`.
 - Schema changes are new migrations in `SqliteSchemaMigrator` with an incremented `CURRENT_VERSION`. Existing migrations are never changed.
-- Player-facing texts live in the `messages` section of the configuration, with defaults in `LifeConfig`. Log messages and code comments are in English.
+- Player-facing texts live in the language files under `core/src/main/resources/lifesmp/lang/`; the `messages` section of the configuration only overrides them. Log messages and code comments are in English.
 - Every source file starts with the SPDX header. See [CONTRIBUTING.md](CONTRIBUTING.md) for commit style and pull request rules.
 
 ## License

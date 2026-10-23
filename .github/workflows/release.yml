@@ -56,6 +56,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Life SMP ${{ env.VERSION }}
+          body_path: docs/release-notes/${{ env.VERSION }}.md
           files: |
             release/lifesmp-paper-${{ env.VERSION }}.jar
             release/lifesmp-fabric-${{ env.VERSION }}.jar

@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Accessor mixin on `ClientboundPlayerInfoUpdatePacket` allowing direct modification of player info entries.
   - Mixin on `Player.getDisplayName()` to color chat and broadcast messages according to life state.
   - Jar-in-Jar bundling of HikariCP and SQLite JDBC.
+- **Localization**:
+  - Built-in messages in English, Russian, French, Italian and Spanish, selected with the `language` config key (default `en`).
+  - All player-facing texts, including `/life help`, command errors, arena and event feedback and time unit suffixes, come from the language files.
+  - Any message can still be overridden in the `messages` section of the config file.
 - **Project Tooling & Verification**:
   - Unified Gradle root build orchestrating multi-project compilation, test execution, and jar verification (`verifyJars`).
   - GitHub Actions CI workflow for automated testing and artifact assembly on Java 21.
+  - Release workflow that publishes `lifesmp-paper-<version>.jar` and `lifesmp-fabric-<version>.jar` for `v*` tags.
+

@@ -4,6 +4,10 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
 
 ## 1. Core Domain (`:core`)
 
+- [x] **SQLite Schema Migration V4**
+  - **What:** Migration adding `players.pardon_notice INTEGER NOT NULL DEFAULT 0`.
+  - **Where:** `io.github.lifesmp.core.storage.SqliteSchemaMigrator`.
+  - **Verification:** `SqliteRepositoryIntegrationTest` (`playerProfilePersistsPardonNotice`). Start a server on a database created by 1.0.0 and check the log for `Applied migration V4`.
 - [x] **SQLite Schema Migration V3**
   - **What:** Migration adding `players.last_name TEXT` and index `idx_players_last_name`.
   - **Where:** `io.github.lifesmp.core.storage.SqliteSchemaMigrator`.
@@ -85,7 +89,7 @@ Run the full verification suite on a clean environment:
 ./gradlew clean dist test verifyJars
 ```
 Expected output:
-- All unit and integration tests pass (84/84).
+- All unit and integration tests pass (91/91).
 - Both artifacts assembled and verified:
   - `dist/paper/lifesmp-1.0.0.jar`
   - `dist/fabric/lifesmp-fabric-1.0.0.jar`

@@ -293,7 +293,7 @@ The project follows a ports and adapters layout:
 | `:paper` | Paper adapter: listeners, Brigadier commands, scheduler, scoreboard teams, TAB packets. |
 | `:fabric` | Fabric adapter: Fabric API events, commands, scheduler, mixins, TAB packets. |
 
-Core services: `LifeEngine`, `PvPPolicyEngine`, `RegenerationService`, `GiftService`, `ArenaService`, `DeadTabService` in `io.github.lifesmp.core.domain.service`.
+Core services: `LifeEngine` (join, death, quit and the one-second tick), `AdminService` (pardon, reset, set lives, name lookup), `PvPPolicyEngine`, `RegenerationService`, `GiftService`, `ArenaService`, `DeadTabService` in `io.github.lifesmp.core.domain.service`.
 
 | Port (`io.github.lifesmp.core.ports`) | Implementations |
 |---|---|
@@ -369,11 +369,12 @@ To add a language, create `<code>.properties` with all keys of `en.properties` a
 
 ### Adding a platform
 
-Create a new module that depends on `:core` and implement `NotificationService`, `PlatformScheduler` and `TabPresenter`. Load the configuration into a `LifeConfig`, create `DatabaseManager`, run `SqliteSchemaMigrator`, then build the core services and `LifeEngine` the way `LifeSmpPaperPlugin` and `LifeSmpFabricServer` do. Forward joins, quits, damage, deaths, movement and commands to `LifeEngine` and the services, and run the regeneration tick once per second.
+Create a new module that depends on `:core` and implement `NotificationService`, `PlatformScheduler` and `TabPresenter`. Load the configuration into a `LifeConfig`, create `DatabaseManager`, run `SqliteSchemaMigrator`, then build the core services and `LifeEngine` the way `LifeSmpPaperPlugin` and `LifeSmpFabricServer` do. Forward joins, quits, damage, deaths and commands to `LifeEngine` and the services. Once per second call `LifeEngine.tickOnlinePlayer` for every online player with its position, then `LifeEngine.tickServer`; the position is what makes AFK detection work. Run any callback that touches game objects on the server thread, because profile loading completes on the database thread.
 
 ### Conventions
 
-- No database IO on the server main thread. Repositories return `CompletableFuture` and run on the database executor; the main thread works with `LifeProfileCache`.
+- No database IO on the server main thread. Repositories return `CompletableFuture` and run on the database executor; the main thread works with `LifeProfileCache`. A profile is loaded when the player joins and removed from memory after the save on quit.
+- Changes to several fields that must be stored together (a death and its ban, a gift) happen inside `synchronized (profile)`, and `LifeProfile.snapshot()` takes the same lock.
 - Schema changes are new migrations in `SqliteSchemaMigrator` with an incremented `CURRENT_VERSION`. Existing migrations are never changed.
 - Player-facing texts live in the language files under `core/src/main/resources/lifesmp/lang/`; the `messages` section of the configuration only overrides them. Log messages and code comments are in English.
 - Every source file starts with the SPDX header. See [CONTRIBUTING.md](CONTRIBUTING.md) for commit style and pull request rules.

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- AFK pausing now works on Fabric, and on Paper for players who never move after joining. Both platforms feed the player position into the regeneration tick every second.
+- Fabric join handling (kick of banned players, name colors, pending messages) now runs on the server thread. Messages, kicks and name updates sent from database callbacks are also moved to the server thread.
+- A death is written to the database immediately instead of at the next autosave, so a crash cannot give the life back. A lost life and its ban are changed under one lock.
+- `/life arena create` no longer replaces an existing arena with the same name; it reports that the arena already exists.
+- Player data is removed from memory after the player leaves instead of staying until restart.
+- A death no longer waits for the database on the server thread when the player data is missing from memory.
+- `/life set` now also clears the player's dead TAB entry and saves at once.
+- A life gift is stored for donor and recipient in one database transaction.
+
+### Changed
+- The pardon notice for offline players is stored in the database (schema version 4) and is no longer lost on restart.
+- Pardon, reset and set lives moved from `LifeEngine` to the new `AdminService`; the player name lookup that was duplicated for Paper and Fabric lives there.
+- The Paper regeneration task and move listener were replaced by the shared tick in `LifeEngine`.
+
+### Removed
+- Unused methods in `LifeEngine`, `LifeProfileCache` and `LifeProfile`.
+
 ## [1.0.0] - 2026-10-23
 
 ### Added

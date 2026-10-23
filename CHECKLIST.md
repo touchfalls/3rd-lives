@@ -53,7 +53,7 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
 - [x] **Jar-in-Jar (JiJ) Bundling of HikariCP and sqlite-jdbc**
   - **What:** Dependencies included via `include(...)` in `fabric/build.gradle.kts`.
   - **Where:** `fabric/build.gradle.kts:18-19`.
-  - **Verification:** Verified by Gradle task `verifyJars`: unpacks and checks nested jars in `dist/fabric/lifesmp-fabric-1.0.0.jar`.
+  - **Verification:** Verified by Gradle task `verifyJars`: unpacks and checks nested jars in `dist/fabric/lifesmp-fabric-1.0.1.jar`.
 - [x] **Mixin Accessor for `ClientboundPlayerInfoUpdatePacket`**
   - **What:** Accessor mixin mapping `entries` field in `ClientboundPlayerInfoUpdatePacket` to allow injecting custom dead entries without mock `ServerPlayer` entities.
   - **Where:** `io.github.lifesmp.fabric.mixin.ClientboundPlayerInfoUpdatePacketAccessor`.
@@ -91,5 +91,5 @@ Run the full verification suite on a clean environment:
 Expected output:
 - All unit and integration tests pass (91/91).
 - Both artifacts assembled and verified:
-  - `dist/paper/lifesmp-1.0.0.jar`
-  - `dist/fabric/lifesmp-fabric-1.0.0.jar`
+  - `dist/paper/lifesmp-1.0.1.jar`
+  - `dist/fabric/lifesmp-fabric-1.0.1.jar`

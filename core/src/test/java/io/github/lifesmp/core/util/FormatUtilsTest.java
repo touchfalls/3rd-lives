@@ -14,40 +14,40 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class FormatUtilsTest {
 
     @Test
-    @DisplayName("Format duration produces exact Russian abbreviations for days, hours, minutes, and seconds")
+    @DisplayName("Format duration produces English abbreviations for days, hours, minutes, and seconds by default")
     void testFormatDuration() {
         // Zero and negative seconds
-        assertThat(FormatUtils.formatDuration(Duration.ZERO)).isEqualTo("0с");
-        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(-10))).isEqualTo("0с");
-        assertThat(FormatUtils.formatDuration(0L)).isEqualTo("0с");
-        assertThat(FormatUtils.formatDuration(-10L)).isEqualTo("0с");
+        assertThat(FormatUtils.formatDuration(Duration.ZERO)).isEqualTo("0s");
+        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(-10))).isEqualTo("0s");
+        assertThat(FormatUtils.formatDuration(0L)).isEqualTo("0s");
+        assertThat(FormatUtils.formatDuration(-10L)).isEqualTo("0s");
 
         // Seconds only
-        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(45))).isEqualTo("45с");
-        assertThat(FormatUtils.formatDuration(45L)).isEqualTo("45с");
-        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(1))).isEqualTo("1с");
-        assertThat(FormatUtils.formatDuration(1L)).isEqualTo("1с");
+        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(45))).isEqualTo("45s");
+        assertThat(FormatUtils.formatDuration(45L)).isEqualTo("45s");
+        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(1))).isEqualTo("1s");
+        assertThat(FormatUtils.formatDuration(1L)).isEqualTo("1s");
 
         // Minutes and seconds
-        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(65))).isEqualTo("1м 5с");
-        assertThat(FormatUtils.formatDuration(65L)).isEqualTo("1м 5с");
-        assertThat(FormatUtils.formatDuration(Duration.ofMinutes(5))).isEqualTo("5м");
-        assertThat(FormatUtils.formatDuration(300L)).isEqualTo("5м");
+        assertThat(FormatUtils.formatDuration(Duration.ofSeconds(65))).isEqualTo("1m 5s");
+        assertThat(FormatUtils.formatDuration(65L)).isEqualTo("1m 5s");
+        assertThat(FormatUtils.formatDuration(Duration.ofMinutes(5))).isEqualTo("5m");
+        assertThat(FormatUtils.formatDuration(300L)).isEqualTo("5m");
 
         // Hours and minutes
-        assertThat(FormatUtils.formatDuration(Duration.ofHours(2).plusMinutes(30))).isEqualTo("2ч 30м");
-        assertThat(FormatUtils.formatDuration(9000L)).isEqualTo("2ч 30м");
-        assertThat(FormatUtils.formatDuration(Duration.ofHours(10))).isEqualTo("10ч");
-        assertThat(FormatUtils.formatDuration(36000L)).isEqualTo("10ч");
+        assertThat(FormatUtils.formatDuration(Duration.ofHours(2).plusMinutes(30))).isEqualTo("2h 30m");
+        assertThat(FormatUtils.formatDuration(9000L)).isEqualTo("2h 30m");
+        assertThat(FormatUtils.formatDuration(Duration.ofHours(10))).isEqualTo("10h");
+        assertThat(FormatUtils.formatDuration(36000L)).isEqualTo("10h");
 
         // Days, hours, and minutes
         Duration d1 = Duration.ofDays(1).plusHours(2).plusMinutes(5);
-        assertThat(FormatUtils.formatDuration(d1)).isEqualTo("1д 2ч 5м");
-        assertThat(FormatUtils.formatDuration(86400L + 7200L + 300L)).isEqualTo("1д 2ч 5м");
+        assertThat(FormatUtils.formatDuration(d1)).isEqualTo("1d 2h 5m");
+        assertThat(FormatUtils.formatDuration(86400L + 7200L + 300L)).isEqualTo("1d 2h 5m");
 
         // Days only
-        assertThat(FormatUtils.formatDuration(Duration.ofDays(3))).isEqualTo("3д");
-        assertThat(FormatUtils.formatDuration(3L * 86400L)).isEqualTo("3д");
+        assertThat(FormatUtils.formatDuration(Duration.ofDays(3))).isEqualTo("3d");
+        assertThat(FormatUtils.formatDuration(3L * 86400L)).isEqualTo("3d");
 
         // Null duration throws NullPointerException
         assertThatThrownBy(() -> FormatUtils.formatDuration(null))
@@ -55,17 +55,17 @@ class FormatUtilsTest {
     }
 
     @Test
-    @DisplayName("Format duration in hours and minutes produces Xч Yм format")
+    @DisplayName("Format duration in hours and minutes produces Xh Ym format by default")
     void testFormatDurationHoursMinutes() {
-        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ZERO)).isEqualTo("0ч 0м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(0L)).isEqualTo("0ч 0м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(-15L)).isEqualTo("0ч 0м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofMinutes(15))).isEqualTo("0ч 15м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(900L)).isEqualTo("0ч 15м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofHours(23).plusMinutes(45))).isEqualTo("23ч 45м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(23 * 3600L + 45 * 60L)).isEqualTo("23ч 45м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofHours(24))).isEqualTo("24ч 0м");
-        assertThat(FormatUtils.formatDurationHoursMinutes(24 * 3600L)).isEqualTo("24ч 0м");
+        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ZERO)).isEqualTo("0h 0m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(0L)).isEqualTo("0h 0m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(-15L)).isEqualTo("0h 0m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofMinutes(15))).isEqualTo("0h 15m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(900L)).isEqualTo("0h 15m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofHours(23).plusMinutes(45))).isEqualTo("23h 45m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(23 * 3600L + 45 * 60L)).isEqualTo("23h 45m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(Duration.ofHours(24))).isEqualTo("24h 0m");
+        assertThat(FormatUtils.formatDurationHoursMinutes(24 * 3600L)).isEqualTo("24h 0m");
 
         assertThatThrownBy(() -> FormatUtils.formatDurationHoursMinutes(null))
                 .isInstanceOf(NullPointerException.class);
@@ -100,5 +100,14 @@ class FormatUtilsTest {
 
         assertThatThrownBy(() -> FormatUtils.formatHearts(1, 3, null))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @DisplayName("Format duration uses the given unit suffixes")
+    void formatsWithCustomUnits() {
+        FormatUtils.TimeUnits russian = new FormatUtils.TimeUnits("д", "ч", "м", "с");
+        assertThat(FormatUtils.formatDuration(86400L + 7200L + 300L, russian)).isEqualTo("1д 2ч 5м");
+        assertThat(FormatUtils.formatDuration(0L, russian)).isEqualTo("0с");
+        assertThat(FormatUtils.formatDurationHoursMinutes(9000L, russian)).isEqualTo("2ч 30м");
     }
 }

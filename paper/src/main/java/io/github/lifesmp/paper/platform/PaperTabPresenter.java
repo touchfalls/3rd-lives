@@ -7,7 +7,6 @@ import com.mojang.authlib.GameProfile;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.DeadEntry;
 import io.github.lifesmp.core.ports.TabPresenter;
-import io.github.lifesmp.core.util.FormatUtils;
 import io.github.lifesmp.paper.scoreboard.PaperScoreboardManager;
 import io.papermc.paper.adventure.PaperAdventure;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -217,7 +216,7 @@ public final class PaperTabPresenter implements TabPresenter {
             if (remaining.isNegative()) {
                 remaining = Duration.ZERO;
             }
-            String timeStr = FormatUtils.formatDurationHoursMinutes(remaining);
+            String timeStr = config.formatDurationHoursMinutes(remaining);
             formatted = formatted.replace("{time}", timeStr)
                                  .replace("<time>", timeStr);
         }

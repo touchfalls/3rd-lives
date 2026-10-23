@@ -61,8 +61,8 @@ public final class FabricConfigAdapter {
      */
     @NotNull
     public static LifeConfig parse(@NotNull Reader reader) {
-        LifeConfig defaults = LifeConfig.createDefault();
         JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+        LifeConfig defaults = LifeConfig.createDefault(getString(root, LifeConfig.KEY_LANGUAGE, null));
 
         String prefix = getString(root, LifeConfig.KEY_PREFIX, defaults.getPrefix());
         int maxLives = getInt(root, LifeConfig.KEY_MAX_LIVES, defaults.getMaxLives());

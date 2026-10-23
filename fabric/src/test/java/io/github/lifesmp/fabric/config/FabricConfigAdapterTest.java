@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
@@ -45,7 +46,7 @@ class FabricConfigAdapterTest {
         assertThat(config.isDeadTabEnabled()).isTrue();
         assertThat(config.getDeadTabFormat()).isEqualTo("<gray>☠ {player}</gray> <dark_gray>[DEAD]</dark_gray>");
         assertThat(config.getDeadTabColor()).isEqualTo("#AAAAAA");
-        assertThat(config.isDeadTabShowTime()).isTrue();
+        assertThat(config.isDeadTabShowTime()).isFalse();
         assertThat(config.getDeadTabMaxEntries()).isEqualTo(50);
         assertThat(config.isDeadTabSortLast()).isTrue();
 
@@ -57,8 +58,25 @@ class FabricConfigAdapterTest {
 
         // Check messages
         assertThat(config.getRawMessage("pvp.red-cannot-attack-red"))
-                .contains("Вы не можете нападать, пока у вас 1 жизнь");
+                .contains("You cannot attack while you have 1 life");
         assertThat(config.getRawMessage("pvp.cannot-attack-red"))
-                .contains("Вы не можете нападать на игрока с 1 жизнью");
+                .contains("You cannot attack a player who has 1 life");
+    }
+
+    @Test
+    @DisplayName("FabricConfigAdapter selects the language bundle and applies message overrides on top of it")
+    void appliesLanguageAndOverrides() {
+        String json = """
+                {
+                  "language": "es",
+                  "messages": { "gift.no-pending": "custom text" }
+                }
+                """;
+
+        LifeConfig config = FabricConfigAdapter.parse(new StringReader(json));
+
+        assertThat(config.getRawMessage("gift.no-pending")).isEqualTo("custom text");
+        assertThat(config.getRawMessage("gift.expired")).contains("La solicitud de regalo de vida ha caducado");
+        assertThat(config.formatDuration(java.time.Duration.ofMinutes(90))).isEqualTo("1h 30m");
     }
 }

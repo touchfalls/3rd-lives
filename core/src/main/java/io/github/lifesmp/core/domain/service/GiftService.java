@@ -108,7 +108,7 @@ public final class GiftService {
         if (donorUuid.equals(recipientUuid)) {
             return InitiateResult.fail(
                     InitiateStatus.CANNOT_GIFT_SELF,
-                    config.getRawMessage("gift.cannot-gift-self")
+                    config.formatMessage("gift.cannot-gift-self")
             );
         }
 
@@ -116,21 +116,21 @@ public final class GiftService {
         if (donorProfile.getLives() <= 1) {
             return InitiateResult.fail(
                     InitiateStatus.DONOR_INSUFFICIENT_LIVES,
-                    config.getRawMessage("gift.donor-last-life")
+                    config.formatMessage("gift.donor-last-life")
             );
         }
 
         if (recipientProfile.getLives() >= config.getMaxLives()) {
             return InitiateResult.fail(
                     InitiateStatus.RECIPIENT_MAX_LIVES,
-                    config.getRawMessage("gift.recipient-max-lives")
+                    config.formatMessage("gift.recipient-max-lives")
             );
         }
 
         if (!economyIntegration.canAffordGift(donorUuid)) {
             return InitiateResult.fail(
                     InitiateStatus.CANNOT_AFFORD,
-                    "Cannot afford life gift transaction"
+                    config.formatMessage("gift.cannot-afford")
             );
         }
 
@@ -171,14 +171,14 @@ public final class GiftService {
         if (request == null) {
             return AcceptResult.fail(
                     AcceptStatus.NO_PENDING_REQUEST,
-                    config.getRawMessage("gift.no-pending")
+                    config.formatMessage("gift.no-pending")
             );
         }
 
         if (request.isExpired(now)) {
             return AcceptResult.fail(
                     AcceptStatus.REQUEST_EXPIRED,
-                    config.getRawMessage("gift.expired")
+                    config.formatMessage("gift.expired")
             );
         }
 
@@ -186,7 +186,7 @@ public final class GiftService {
         if (donorProfile == null) {
             return AcceptResult.fail(
                     AcceptStatus.DONOR_OFFLINE,
-                    config.getRawMessage("gift.expired")
+                    config.formatMessage("gift.expired")
             );
         }
 
@@ -200,14 +200,14 @@ public final class GiftService {
                 if (donorProfile.getLives() <= 1) {
                     return AcceptResult.fail(
                             AcceptStatus.DONOR_INSUFFICIENT_LIVES,
-                            config.getRawMessage("gift.donor-last-life")
+                            config.formatMessage("gift.donor-last-life")
                     );
                 }
 
                 if (recipientProfile.getLives() >= config.getMaxLives()) {
                     return AcceptResult.fail(
                             AcceptStatus.RECIPIENT_MAX_LIVES,
-                            config.getRawMessage("gift.recipient-max-lives")
+                            config.formatMessage("gift.recipient-max-lives")
                     );
                 }
 

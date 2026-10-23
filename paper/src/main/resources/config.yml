@@ -1,5 +1,8 @@
 # Life SMP Configuration (Paper Adapter)
 
+# Language of the built-in messages: en, ru, fr, it, es
+language: en
+
 # Global message prefix
 prefix: "<dark_gray>[<gradient:#55FF55:#FFAA00>Life</gradient>]</dark_gray> "
 
@@ -46,46 +49,8 @@ colors:
   1: "#FF5555" # Red
   0: "#AAAAAA" # Gray (Dead/Banned)
 
-# MiniMessage-formatted messages
-messages:
-  pvp.red-cannot-attack-red: "{prefix}<red>Вы не можете нападать, пока у вас 1 жизнь</red>"
-  pvp.cannot-attack-red: "{prefix}<red>Вы не можете нападать на игрока с 1 жизнью</red>"
-  death.ban-kick: "<red><bold>☠ ВЫ ПОТЕРЯЛИ ВСЕ ЖИЗНИ!</bold></red>\n\n<gray>Причина:</gray> <white>Исчерпан лимит жизней</white>\n<gray>Срок бана:</gray> <yellow>{time}</yellow>\n\n<dark_gray>Подробнее: обратитесь к администрации сервера</dark_gray>"
-  death.ban-join: "<red><bold>Вы забанены за потерю всех жизней!</bold></red>\n\n<gray>До окончания бана осталось:</gray> <yellow>{time}</yellow>\n<dark_gray>Ожидайте окончания срока или помилования администратором.</dark_gray>"
-  death.life-lost: "<dark_gray>▪ <red>☠ Вы погибли.</red> <gray>Осталось жизней:</gray> {hearts} <gray>({lives}/{max})</gray>"
-  death.last-life-warning: "<red><bold>Это ваша последняя жизнь!</bold></red> <gray>Следующая смерть приведёт к бану на {time}.</gray>"
-  death.arena-death: "{prefix}<gold>Вы погибли на арене! Жизнь сохранена.</gold>"
-  regen.life-gained: "{prefix}<green>Вы восстановили жизнь! Текущие жизни: {lives}</green>"
-  gift.sent: "{prefix}<green>Вы отправили запрос на передачу жизни игроку <yellow>{player}</yellow>. Ожидание подтверждения ({time}).</green>"
-  gift.received: "{prefix}<gold>Игрок <yellow>{player}</yellow> хочет подарить вам жизнь! Введите <click:run_command:'/life accept'><green>/life accept</green></click> в течение {time}.</gold>"
-  gift.accepted-donor: "{prefix}<green>Игрок <yellow>{player}</yellow> принял ваш подарок! У вас активирована ускоренная регенерация.</green>"
-  gift.accepted-recipient: "{prefix}<green>Вы приняли жизнь от <yellow>{player}</yellow>! Ваши жизни: {lives}.</green>"
-  gift.expired: "{prefix}<red>Запрос на передачу жизни истек или был отменен.</red>"
-  gift.cannot-gift-self: "{prefix}<red>Вы не можете подарить жизнь самому себе!</red>"
-  gift.donor-last-life: "{prefix}<red>Вы не можете подарить последнюю жизнь! У вас должно остаться минимум 2 жизни.</red>"
-  gift.recipient-max-lives: "{prefix}<red>У игрока уже максимальное количество жизней!</red>"
-  gift.no-pending: "{prefix}<red>У вас нет активных запросов на подарок жизни.</red>"
-  info.header: "<dark_gray>──────</dark_gray> {color}<bold>Life SMP</bold></color> <dark_gray>──────</dark_gray>"
-  info.lives: "<gray>Жизни:</gray> {hearts} <gray>({lives}/{max})</gray>"
-  info.next-life: "<gray>До следующей жизни:</gray> <yellow>{time}</yellow>"
-  info.full-lives: "<gray>До следующей жизни:</gray> <green>Жизни полные</green>"
-  info.mode-gift: "<gray>Ускоренная регенерация:</gray> <green>активна</green> <gray>(интервал {time})</gray>"
-  info.mode-normal: "<gray>Обычная регенерация</gray> <gray>(интервал {time})</gray>"
-  info.afk-paused: "<yellow>Таймер на паузе: AFK</yellow>"
-  info.footer: "<dark_gray>────────────────────────</dark_gray>"
-  arena.created: "{prefix}<green>Арена '<name>' успешно создана и включена.</green>"
-  arena.removed: "{prefix}<green>Арена '<name>' удалена.</green>"
-  arena.not-found: "{prefix}<red>Арена '<name>' не найдена.</red>"
-  arena.status-updated: "{prefix}<green>Арена '<name>' теперь <status>.</green>"
-  arena.list-header: "<gold>=== Список арен (<count>) ===</gold>"
-  arena.list-entry: "<gray>- <yellow><name></yellow> (<world>: <x1>,<y1>,<z1> -> <x2>,<y2>,<z2>) [<status>]</gray>"
-  event.pvp-override: "{prefix}<gold>[Ивент] Глобальный PvP-оверрайд <status>!</gold>"
-  admin.reload-success: "{prefix}<green>Конфигурация Life SMP успешно перезагружена!</green>"
-  admin.set-lives: "{prefix}<green>Количество жизней игрока <yellow>{player}</yellow> установлено на {lives}.</green>"
-  admin.pardon-success: "{prefix}<green>Игрок <yellow>{player}</yellow> помилован, у него 1 жизнь.</green>"
-  admin.pardon-not-banned: "{prefix}<red>Игрок <yellow>{player}</yellow> не находится в бане за смерть.</red>"
-  admin.pardon-player-not-found: "{prefix}<red>Игрок <yellow>{player}</yellow> не найден в базе данных.</red>"
-  admin.pardon-join-notify: "{prefix}<gold>Вы были помилованы администратором. У вас 1 жизнь!</gold>"
-  admin.reset-success: "{prefix}<green>Жизни игрока <yellow>{player}</yellow> полностью восстановлены ({max}/{max}).</green>"
-  admin.reset-player-notify: "{prefix}<green>Администратор полностью восстановил ваши жизни ({lives}/{max})!</green>"
-  admin.reset-player-not-found: "{prefix}<red>Игрок <yellow>{player}</yellow> не найден в базе данных.</red>"
+# Optional message overrides in MiniMessage format. Any key from the built-in
+# language files can be set here and takes precedence over the selected language.
+# The full list of keys is in the README. Example:
+# messages:
+#   gift.sent: "{prefix}<green>Life offered to <yellow>{player}</yellow>.</green>"

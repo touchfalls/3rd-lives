@@ -21,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -210,7 +212,7 @@ public final class FabricCommandRegistrar<S> {
 
     private int executeInfo(S source) {
         if (!adapter.isPlayer(source)) {
-            adapter.sendFeedback(source, "This command can only be executed by players.");
+            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("command.players-only"));
             return 0;
         }
 
@@ -226,14 +228,14 @@ public final class FabricCommandRegistrar<S> {
         boolean isAfk = lifeEngine.getRegenerationService().isAfk(uuid, now, config.getAfkSeconds());
 
         // Header
-        adapter.sendFeedback(source, config.formatMessage("info.header", java.util.Map.of(
+        adapter.sendFeedback(source, config.formatMessage("info.header", Map.of(
                 "color", "<color:" + colorHex + ">",
                 "lives", String.valueOf(lives),
                 "max", String.valueOf(config.getMaxLives())
         )));
 
         // Lives
-        adapter.sendFeedback(source, config.formatMessage("info.lives", java.util.Map.of(
+        adapter.sendFeedback(source, config.formatMessage("info.lives", Map.of(
                 "hearts", hearts,
                 "lives", String.valueOf(lives),
                 "max", String.valueOf(config.getMaxLives()),
@@ -242,14 +244,14 @@ public final class FabricCommandRegistrar<S> {
 
         // Next life timer
         if (lives >= config.getMaxLives()) {
-            adapter.sendFeedback(source, config.getRawMessage("info.full-lives"));
+            adapter.sendFeedback(source, config.formatMessage("info.full-lives"));
         } else {
             long currentSec = profile != null ? profile.getOnlineSecondsSinceLastLoss() : 0L;
             long thresholdSec = (profile != null && profile.isGiftRegenActive())
                     ? config.getGiftRegenSecondsPerLife()
                     : config.getRegenSecondsPerLife();
             long remainingSec = Math.max(0L, thresholdSec - currentSec);
-            String remainingTime = FormatUtils.formatDuration(Duration.ofSeconds(remainingSec));
+            String remainingTime = config.formatDuration(Duration.ofSeconds(remainingSec));
 
             adapter.sendFeedback(source, config.formatMessage("info.next-life", "time", remainingTime));
         }
@@ -257,39 +259,39 @@ public final class FabricCommandRegistrar<S> {
         // Mode line
         boolean giftRegen = profile != null && profile.isGiftRegenActive();
         if (giftRegen) {
-            String giftInterval = FormatUtils.formatDuration(Duration.ofSeconds(config.getGiftRegenSecondsPerLife()));
+            String giftInterval = config.formatDuration(Duration.ofSeconds(config.getGiftRegenSecondsPerLife()));
             adapter.sendFeedback(source, config.formatMessage("info.mode-gift", "time", giftInterval));
         } else {
-            String normalInterval = FormatUtils.formatDuration(Duration.ofSeconds(config.getRegenSecondsPerLife()));
+            String normalInterval = config.formatDuration(Duration.ofSeconds(config.getRegenSecondsPerLife()));
             adapter.sendFeedback(source, config.formatMessage("info.mode-normal", "time", normalInterval));
         }
 
         // AFK status (only if AFK)
         if (isAfk) {
-            adapter.sendFeedback(source, config.getRawMessage("info.afk-paused"));
+            adapter.sendFeedback(source, config.formatMessage("info.afk-paused"));
         }
 
         // Footer
-        adapter.sendFeedback(source, config.getRawMessage("info.footer"));
+        adapter.sendFeedback(source, config.formatMessage("info.footer"));
         return 1;
     }
 
     private int executeHelp(S source) {
         LifeConfig config = server.getLifeConfig();
-        adapter.sendFeedback(source, "<dark_gray>──────</dark_gray> <green><bold>Life SMP Help</bold></green> <dark_gray>──────</dark_gray>");
-        adapter.sendFeedback(source, "<yellow>/life</yellow> <gray>— View your life status and regeneration timer</gray>");
-        adapter.sendFeedback(source, "<yellow>/life gift <player></yellow> <gray>— Send a life to another player</gray>");
-        adapter.sendFeedback(source, "<yellow>/life accept</yellow> <gray>— Accept a pending life gift</gray>");
+        adapter.sendFeedback(source, config.formatMessage("help.header"));
+        adapter.sendFeedback(source, config.formatMessage("help.info"));
+        adapter.sendFeedback(source, config.formatMessage("help.gift"));
+        adapter.sendFeedback(source, config.formatMessage("help.accept"));
         if (adapter.hasPermission(source, 4)) {
-            adapter.sendFeedback(source, "<red><bold>Admin Commands:</bold></red>");
-            adapter.sendFeedback(source, "<yellow>/life pardon <player></yellow> <gray>— Unban an eliminated player (grants 1 life)</gray>");
-            adapter.sendFeedback(source, "<yellow>/life reset <player></yellow> <gray>— Fully restore lives (" + config.getMaxLives() + "/" + config.getMaxLives() + ")</gray>");
-            adapter.sendFeedback(source, "<yellow>/life set <player> <1-3></yellow> <gray>— Set a player's lives</gray>");
-            adapter.sendFeedback(source, "<yellow>/life reload</yellow> <gray>— Reload configuration without resetting player data</gray>");
-            adapter.sendFeedback(source, "<yellow>/life event pvp-override <true|false> [minutes]</yellow> <gray>— Global PvP event toggle</gray>");
-            adapter.sendFeedback(source, "<yellow>/life arena <create|remove|enable|disable|list></yellow> <gray>— Manage arenas</gray>");
+            adapter.sendFeedback(source, config.formatMessage("help.admin-header"));
+            adapter.sendFeedback(source, config.formatMessage("help.pardon"));
+            adapter.sendFeedback(source, config.formatMessage("help.reset", "max", String.valueOf(config.getMaxLives())));
+            adapter.sendFeedback(source, config.formatMessage("help.set"));
+            adapter.sendFeedback(source, config.formatMessage("help.reload"));
+            adapter.sendFeedback(source, config.formatMessage("help.event"));
+            adapter.sendFeedback(source, config.formatMessage("help.arena"));
         }
-        adapter.sendFeedback(source, "<dark_gray>─────────────────────────────────</dark_gray>");
+        adapter.sendFeedback(source, config.formatMessage("help.footer"));
         return 1;
     }
 
@@ -318,7 +320,7 @@ public final class FabricCommandRegistrar<S> {
                     case SUCCESS -> {
                         adapter.sendFeedback(source, config.formatMessage(
                                 "admin.pardon-success",
-                                java.util.Map.of("player", targetName, "lives", "1")
+                                Map.of("player", targetName, "lives", "1")
                         ));
                         server.getBridge().updateVisuals(targetUuid, 1);
                     }
@@ -344,7 +346,7 @@ public final class FabricCommandRegistrar<S> {
                 if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
                     adapter.sendFeedback(source, config.formatMessage(
                             "admin.reset-success",
-                            java.util.Map.of(
+                            Map.of(
                                     "player", targetName,
                                     "lives", String.valueOf(config.getMaxLives()),
                                     "max", String.valueOf(config.getMaxLives())
@@ -361,24 +363,24 @@ public final class FabricCommandRegistrar<S> {
     }
 
     private int executeGift(S source, String targetName) {
+        LifeConfig config = server.getLifeConfig();
         if (!adapter.isPlayer(source)) {
-            adapter.sendFeedback(source, "This command can only be executed by players.");
+            adapter.sendFeedback(source, config.formatMessage("command.players-only"));
             return 0;
         }
 
         UUID donorUuid = adapter.getUuid(source);
         UUID recipientUuid = adapter.getPlayerUuidByName(targetName);
         if (recipientUuid == null) {
-            adapter.sendFeedback(source, "Player not found or offline.");
+            adapter.sendFeedback(source, config.formatMessage("gift.player-offline", "player", targetName));
             return 0;
         }
 
-        LifeConfig config = server.getLifeConfig();
         LifeProfile donorProfile = lifeEngine.getProfileCache().getCachedProfile(donorUuid).orElse(null);
         LifeProfile recipientProfile = lifeEngine.getProfileCache().getCachedProfile(recipientUuid).orElse(null);
 
         if (donorProfile == null || recipientProfile == null) {
-            adapter.sendFeedback(source, "Error: player profiles are not loaded.");
+            adapter.sendFeedback(source, config.formatMessage("command.profile-not-loaded"));
             return 0;
         }
 
@@ -387,26 +389,32 @@ public final class FabricCommandRegistrar<S> {
         );
 
         if (result.status() != GiftService.InitiateStatus.SUCCESS) {
-            adapter.sendFeedback(source, result.errorMessage() != null ? result.errorMessage() : "Error sending life gift.");
+            adapter.sendFeedback(source, result.errorMessage() != null ? result.errorMessage() : config.formatMessage("gift.failed"));
             return 0;
         }
 
-        adapter.sendFeedback(source, "Life gift request sent to " + targetName + ".");
+        String timeout = config.formatDuration(Duration.ofSeconds(config.getGiftRequestTimeoutSeconds()));
+        adapter.sendFeedback(source, config.formatMessage("gift.sent", Map.of("player", targetName, "time", timeout)));
+        server.getBridge().sendMessage(
+                recipientUuid,
+                config.formatMessage("gift.received", Map.of("player", adapter.getName(source), "time", timeout)),
+                false
+        );
         return 1;
     }
 
     private int executeAccept(S source) {
+        LifeConfig config = server.getLifeConfig();
         if (!adapter.isPlayer(source)) {
-            adapter.sendFeedback(source, "This command can only be executed by players.");
+            adapter.sendFeedback(source, config.formatMessage("command.players-only"));
             return 0;
         }
 
         UUID recipientUuid = adapter.getUuid(source);
-        LifeConfig config = server.getLifeConfig();
         LifeProfile recipientProfile = lifeEngine.getProfileCache().getCachedProfile(recipientUuid).orElse(null);
 
         if (recipientProfile == null) {
-            adapter.sendFeedback(source, "Error loading player profile.");
+            adapter.sendFeedback(source, config.formatMessage("command.profile-not-loaded"));
             return 0;
         }
 
@@ -423,28 +431,51 @@ public final class FabricCommandRegistrar<S> {
         );
 
         if (result.status() != GiftService.AcceptStatus.SUCCESS) {
-            adapter.sendFeedback(source, result.errorMessage() != null ? result.errorMessage() : "Error accepting life gift.");
+            adapter.sendFeedback(source, result.errorMessage() != null ? result.errorMessage() : config.formatMessage("gift.failed"));
             return 0;
         }
 
-        adapter.sendFeedback(source, "You have accepted the life! Your lives: " + result.recipientNewLives());
+        UUID donorUuid = result.donorUuid();
+        String donorName = donorUuid != null
+                ? lifeEngine.getProfileCache().getCachedProfile(donorUuid).map(LifeProfile::getLastName).orElse(null)
+                : null;
+        adapter.sendFeedback(source, config.formatMessage("gift.accepted-recipient", Map.of(
+                "player", donorName != null ? donorName : "?",
+                "lives", String.valueOf(result.recipientNewLives())
+        )));
+        server.getBridge().updateVisuals(recipientUuid, result.recipientNewLives());
+        lifeEngine.getProfileCache().markDirty(recipientUuid);
+
+        if (donorUuid != null) {
+            server.getBridge().sendMessage(
+                    donorUuid,
+                    config.formatMessage("gift.accepted-donor", "player", adapter.getName(source)),
+                    false
+            );
+            server.getBridge().updateVisuals(donorUuid, result.donorNewLives());
+            lifeEngine.getProfileCache().markDirty(donorUuid);
+        }
         return 1;
     }
 
     private int executeReload(S source) {
         server.reloadServerConfig();
-        adapter.sendFeedback(source, "Life SMP configuration reloaded successfully.");
+        adapter.sendFeedback(source, server.getLifeConfig().formatMessage("admin.reload-success"));
         return 1;
     }
 
     private int executeSetLives(S source, String targetName, int lives) {
+        LifeConfig config = server.getLifeConfig();
         resolvePlayerUuid(targetName).thenAccept(optUuid -> {
             if (optUuid.isEmpty()) {
-                adapter.sendFeedback(source, "Player not found.");
+                adapter.sendFeedback(source, config.formatMessage("admin.set-player-not-found", "player", targetName));
                 return;
             }
-            lifeEngine.adminSetLives(optUuid.get(), lives, server.getLifeConfig()).thenRun(() ->
-                    adapter.sendFeedback(source, "Set lives of " + targetName + " to " + lives + "."));
+            UUID targetUuid = optUuid.get();
+            lifeEngine.adminSetLives(targetUuid, lives, config).thenRun(() -> adapter.sendFeedback(
+                    source,
+                    config.formatMessage("admin.set-lives", Map.of("player", targetName, "lives", String.valueOf(lives)))
+            ));
         });
         return 1;
     }
@@ -453,42 +484,47 @@ public final class FabricCommandRegistrar<S> {
         Instant expiresAt = (enabled && minutes > 0) ? Instant.now().plusSeconds(minutes * 60L) : null;
         lifeEngine.getArenaService().setGlobalPvpOverride(enabled, expiresAt);
 
-        server.getBridge().broadcast("[Event] Global PvP override " + (enabled ? "ENABLED" : "DISABLED") + "!");
+        LifeConfig config = server.getLifeConfig();
+        String status = config.formatMessage(enabled ? "event.status-enabled" : "event.status-disabled");
+        server.getBridge().broadcast(config.formatMessage("event.pvp-override", "status", status));
         return 1;
     }
 
     private int executeArenaList(S source) {
+        LifeConfig config = server.getLifeConfig();
         Collection<Arena> arenas = lifeEngine.getArenaService().getAllArenas();
-        adapter.sendFeedback(source, "=== Arena List (" + arenas.size() + ") ===");
+        adapter.sendFeedback(source, config.formatMessage("arena.list-header", "count", String.valueOf(arenas.size())));
         for (Arena arena : arenas) {
-            adapter.sendFeedback(source, String.format(
-                    "- %s (%s: %.0f,%.0f,%.0f -> %.0f,%.0f,%.0f) [%s]",
-                    arena.getName(), arena.getWorld(),
-                    arena.getMinX(), arena.getMinY(), arena.getMinZ(),
-                    arena.getMaxX(), arena.getMaxY(), arena.getMaxZ(),
-                    arena.isEnabled() ? "Enabled" : "Disabled"
-            ));
+            Map<String, String> placeholders = new HashMap<>();
+            placeholders.put("name", arena.getName());
+            placeholders.put("world", arena.getWorld());
+            placeholders.put("x1", String.format("%.0f", arena.getMinX()));
+            placeholders.put("y1", String.format("%.0f", arena.getMinY()));
+            placeholders.put("z1", String.format("%.0f", arena.getMinZ()));
+            placeholders.put("x2", String.format("%.0f", arena.getMaxX()));
+            placeholders.put("y2", String.format("%.0f", arena.getMaxY()));
+            placeholders.put("z2", String.format("%.0f", arena.getMaxZ()));
+            placeholders.put("status", config.formatMessage(arena.isEnabled() ? "arena.status-enabled" : "arena.status-disabled"));
+            adapter.sendFeedback(source, config.formatMessage("arena.list-entry", placeholders));
         }
         return 1;
     }
 
     private int executeArenaRemove(S source, String name) {
-        lifeEngine.getArenaService().removeArena(name).thenAccept(success -> {
-            if (success) {
-                adapter.sendFeedback(source, "Arena '" + name + "' removed.");
-            } else {
-                adapter.sendFeedback(source, "Arena '" + name + "' not found.");
-            }
-        });
+        LifeConfig config = server.getLifeConfig();
+        lifeEngine.getArenaService().removeArena(name).thenAccept(success ->
+                adapter.sendFeedback(source, config.formatMessage(success ? "arena.removed" : "arena.not-found", "name", name)));
         return 1;
     }
 
     private int executeArenaSetEnabled(S source, String name, boolean enabled) {
+        LifeConfig config = server.getLifeConfig();
         lifeEngine.getArenaService().setArenaEnabled(name, enabled).thenAccept(success -> {
             if (success) {
-                adapter.sendFeedback(source, "Arena '" + name + "' is now " + (enabled ? "enabled." : "disabled."));
+                String status = config.formatMessage(enabled ? "arena.status-enabled" : "arena.status-disabled");
+                adapter.sendFeedback(source, config.formatMessage("arena.status-updated", Map.of("name", name, "status", status)));
             } else {
-                adapter.sendFeedback(source, "Arena '" + name + "' not found.");
+                adapter.sendFeedback(source, config.formatMessage("arena.not-found", "name", name));
             }
         });
         return 1;
@@ -496,7 +532,7 @@ public final class FabricCommandRegistrar<S> {
 
     private int executeArenaCreateAuto(S source, String name) {
         if (!adapter.isPlayer(source)) {
-            adapter.sendFeedback(source, "Only players can create an arena using current position.");
+            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("arena.players-only"));
             return 0;
         }
         double x = adapter.getX(source);
@@ -512,7 +548,7 @@ public final class FabricCommandRegistrar<S> {
     ) {
         String world = adapter.getWorldName(source);
         lifeEngine.getArenaService().createArena(name, world, x1, y1, z1, x2, y2, z2).thenAccept(arena -> {
-            adapter.sendFeedback(source, "Arena '" + name + "' created successfully.");
+            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("arena.created", "name", name));
         });
         return 1;
     }

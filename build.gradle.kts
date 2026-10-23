@@ -125,6 +125,13 @@ tasks.register("verifyJars") {
                 throw GradleException("Verification failed in Paper jar: 'META-INF/services/java.sql.Driver' does not contain 'org.sqlite.JDBC'. Content:\n$driverContent")
             }
 
+            // Check bundled message files
+            for (lang in listOf("en", "ru", "fr", "it", "es")) {
+                if (zip.getEntry("lifesmp/lang/$lang.properties") == null) {
+                    throw GradleException("Verification failed in Paper jar: missing 'lifesmp/lang/$lang.properties'")
+                }
+            }
+
             // Check paper-plugin.yml
             val pluginYml = zip.getEntry("paper-plugin.yml")
             if (pluginYml == null) {
@@ -165,6 +172,13 @@ tasks.register("verifyJars") {
             }
             if (!modJsonContent.contains("io.github.lifesmp.fabric.LifeSmpFabricServer")) {
                 throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing server entrypoint 'io.github.lifesmp.fabric.LifeSmpFabricServer'")
+            }
+
+            // Check bundled message files
+            for (lang in listOf("en", "ru", "fr", "it", "es")) {
+                if (zip.getEntry("lifesmp/lang/$lang.properties") == null) {
+                    throw GradleException("Verification failed in Fabric jar: missing 'lifesmp/lang/$lang.properties'")
+                }
             }
 
             // Check lifesmp.mixins.json

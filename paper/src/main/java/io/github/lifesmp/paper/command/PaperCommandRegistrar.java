@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 
 /**
  * Registers modern Brigadier commands for Life SMP via Paper LifecycleEvents.COMMANDS.
@@ -44,6 +45,8 @@ import java.util.concurrent.CompletableFuture;
  * /life pardon, /life reset, /life event, /life arena, and /life help.
  */
 public final class PaperCommandRegistrar {
+
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{([a-z0-9_-]+)}");
 
     private final LifeSmpPaperPlugin plugin;
     private final LifeEngine lifeEngine;
@@ -61,7 +64,15 @@ public final class PaperCommandRegistrar {
     }
 
     private Component render(@NotNull LifeConfig config, @NotNull String key, @NotNull TagResolver... resolvers) {
-        String template = config.getRawMessage(key);
+        return renderTemplate(config, config.getRawMessage(key), resolvers);
+    }
+
+    /**
+     * Renders a MiniMessage template. Message files write placeholders as {@code {name}};
+     * they are rewritten to {@code <name>} so MiniMessage placeholder resolvers can fill them.
+     */
+    private Component renderTemplate(@NotNull LifeConfig config, @NotNull String rawTemplate, @NotNull TagResolver... resolvers) {
+        String template = PLACEHOLDER_PATTERN.matcher(rawTemplate).replaceAll("<$1>");
         TagResolver prefixResolver = Placeholder.parsed("prefix", config.getPrefix());
         TagResolver combined = TagResolver.builder()
                 .resolver(prefixResolver)
@@ -250,7 +261,7 @@ public final class PaperCommandRegistrar {
     private int executeInfo(CommandSourceStack source) {
         CommandSender sender = source.getSender();
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be executed by players."));
+            sender.sendMessage(render("command.players-only"));
             return 0;
         }
 
@@ -288,7 +299,7 @@ public final class PaperCommandRegistrar {
                     ? config.getGiftRegenSecondsPerLife()
                     : config.getRegenSecondsPerLife();
             long remainingSec = Math.max(0L, thresholdSec - currentSec);
-            String remainingTime = FormatUtils.formatDuration(Duration.ofSeconds(remainingSec));
+            String remainingTime = config.formatDuration(Duration.ofSeconds(remainingSec));
 
             player.sendMessage(render(config, "info.next-life",
                     Placeholder.unparsed("time", remainingTime)
@@ -298,12 +309,12 @@ public final class PaperCommandRegistrar {
         // Mode line
         boolean giftRegen = profile != null && profile.isGiftRegenActive();
         if (giftRegen) {
-            String giftInterval = FormatUtils.formatDuration(Duration.ofSeconds(config.getGiftRegenSecondsPerLife()));
+            String giftInterval = config.formatDuration(Duration.ofSeconds(config.getGiftRegenSecondsPerLife()));
             player.sendMessage(render(config, "info.mode-gift",
                     Placeholder.unparsed("time", giftInterval)
             ));
         } else {
-            String normalInterval = FormatUtils.formatDuration(Duration.ofSeconds(config.getRegenSecondsPerLife()));
+            String normalInterval = config.formatDuration(Duration.ofSeconds(config.getRegenSecondsPerLife()));
             player.sendMessage(render(config, "info.mode-normal",
                     Placeholder.unparsed("time", normalInterval)
             ));
@@ -322,60 +333,37 @@ public final class PaperCommandRegistrar {
     private int executeHelp(CommandSourceStack source) {
         CommandSender sender = source.getSender();
         LifeConfig config = plugin.getLifeConfig();
+        TagResolver max = Placeholder.unparsed("max", String.valueOf(config.getMaxLives()));
 
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<dark_gray>──────</dark_gray> <green><bold>Life SMP Help</bold></green> <dark_gray>──────</dark_gray>"
-        ));
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<yellow>/life</yellow> <gray>— View your life status and regeneration timer</gray>"
-        ));
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<yellow>/life gift <player></yellow> <gray>— Send a life to another player</gray>"
-        ));
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<yellow>/life accept</yellow> <gray>— Accept a pending life gift</gray>"
-        ));
+        sender.sendMessage(render(config, "help.header"));
+        sender.sendMessage(render(config, "help.info"));
+        sender.sendMessage(render(config, "help.gift"));
+        sender.sendMessage(render(config, "help.accept"));
 
         if (sender.hasPermission("lifesmp.admin")) {
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<red><bold>Admin Commands:</bold></red>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life pardon <player></yellow> <gray>— Unban an eliminated player (grants 1 life)</gray>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life reset <player></yellow> <gray>— Fully restore lives (3/" + config.getMaxLives() + ")</gray>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life set <player> <1-3></yellow> <gray>— Set a player's lives</gray>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life reload</yellow> <gray>— Reload configuration without resetting player data</gray>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life event pvp-override <true|false> [minutes]</yellow> <gray>— Global PvP event toggle</gray>"
-            ));
-            sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<yellow>/life arena <create|remove|enable|disable|list></yellow> <gray>— Manage arenas</gray>"
-            ));
+            sender.sendMessage(render(config, "help.admin-header"));
+            sender.sendMessage(render(config, "help.pardon"));
+            sender.sendMessage(render(config, "help.reset", max));
+            sender.sendMessage(render(config, "help.set"));
+            sender.sendMessage(render(config, "help.reload"));
+            sender.sendMessage(render(config, "help.event"));
+            sender.sendMessage(render(config, "help.arena"));
         }
 
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<dark_gray>─────────────────────────────────</dark_gray>"
-        ));
+        sender.sendMessage(render(config, "help.footer"));
         return 1;
     }
 
     private int executeGift(CommandSourceStack source, String targetName) {
         CommandSender sender = source.getSender();
         if (!(sender instanceof Player donor)) {
-            sender.sendMessage(Component.text("This command can only be executed by players."));
+            sender.sendMessage(render("command.players-only"));
             return 0;
         }
 
         Player recipient = Bukkit.getPlayerExact(targetName);
         if (recipient == null || !recipient.isOnline()) {
-            donor.sendMessage(Component.text("Player not found or offline."));
+            donor.sendMessage(render("gift.player-offline", Placeholder.unparsed("player", targetName)));
             return 0;
         }
 
@@ -384,7 +372,7 @@ public final class PaperCommandRegistrar {
         LifeProfile recipientProfile = lifeEngine.getProfileCache().getCachedProfile(recipient.getUniqueId()).orElse(null);
 
         if (donorProfile == null || recipientProfile == null) {
-            donor.sendMessage(Component.text("Error: player profiles are not loaded."));
+            donor.sendMessage(render("command.profile-not-loaded"));
             return 0;
         }
 
@@ -398,13 +386,13 @@ public final class PaperCommandRegistrar {
         );
 
         if (result.status() != GiftService.InitiateStatus.SUCCESS) {
-            donor.sendMessage(MiniMessage.miniMessage().deserialize(
-                    result.errorMessage() != null ? result.errorMessage() : "<red>Error sending life gift.</red>"
+            donor.sendMessage(renderTemplate(config,
+                    result.errorMessage() != null ? result.errorMessage() : config.getRawMessage("gift.failed")
             ));
             return 0;
         }
 
-        String timeoutFormatted = FormatUtils.formatDuration(Duration.ofSeconds(config.getGiftRequestTimeoutSeconds()));
+        String timeoutFormatted = config.formatDuration(Duration.ofSeconds(config.getGiftRequestTimeoutSeconds()));
 
         donor.sendMessage(render(
                 config,
@@ -426,14 +414,14 @@ public final class PaperCommandRegistrar {
     private int executeAccept(CommandSourceStack source) {
         CommandSender sender = source.getSender();
         if (!(sender instanceof Player recipient)) {
-            sender.sendMessage(Component.text("This command can only be executed by players."));
+            sender.sendMessage(render("command.players-only"));
             return 0;
         }
 
         LifeConfig config = plugin.getLifeConfig();
         LifeProfile recipientProfile = lifeEngine.getProfileCache().getCachedProfile(recipient.getUniqueId()).orElse(null);
         if (recipientProfile == null) {
-            recipient.sendMessage(Component.text("Error loading player profile."));
+            recipient.sendMessage(render(config, "command.profile-not-loaded"));
             return 0;
         }
 
@@ -456,15 +444,15 @@ public final class PaperCommandRegistrar {
         );
 
         if (result.status() != GiftService.AcceptStatus.SUCCESS) {
-            recipient.sendMessage(MiniMessage.miniMessage().deserialize(
-                    result.errorMessage() != null ? result.errorMessage() : "<red>Error accepting life gift.</red>"
+            recipient.sendMessage(renderTemplate(config,
+                    result.errorMessage() != null ? result.errorMessage() : config.getRawMessage("gift.failed")
             ));
             return 0;
         }
 
         UUID donorUuid = result.donorUuid();
         Player donorPlayer = donorUuid != null ? Bukkit.getPlayer(donorUuid) : null;
-        String donorName = donorPlayer != null ? donorPlayer.getName() : "Donor";
+        String donorName = donorPlayer != null ? donorPlayer.getName() : "?";
 
         recipient.sendMessage(render(
                 config,
@@ -503,7 +491,7 @@ public final class PaperCommandRegistrar {
 
         resolvePlayerUuid(targetName).thenAccept(optUuid -> {
             if (optUuid.isEmpty()) {
-                sender.sendMessage(Component.text("Player not found."));
+                sender.sendMessage(render(config, "admin.set-player-not-found", Placeholder.unparsed("player", targetName)));
                 return;
             }
             UUID targetUuid = optUuid.get();
@@ -614,7 +602,7 @@ public final class PaperCommandRegistrar {
         Instant expiresAt = (enabled && minutes > 0) ? Instant.now().plusSeconds(minutes * 60L) : null;
         lifeEngine.getArenaService().setGlobalPvpOverride(enabled, expiresAt);
 
-        String status = enabled ? "<green>ENABLED</green>" : "<red>DISABLED</red>";
+        String status = plugin.getLifeConfig().getRawMessage(enabled ? "event.status-enabled" : "event.status-disabled");
         Bukkit.broadcast(render(
                 "event.pvp-override",
                 Placeholder.parsed("status", status)
@@ -630,7 +618,7 @@ public final class PaperCommandRegistrar {
         ));
 
         for (Arena arena : arenas) {
-            String status = arena.isEnabled() ? "<green>Enabled</green>" : "<red>Disabled</red>";
+            String status = plugin.getLifeConfig().getRawMessage(arena.isEnabled() ? "arena.status-enabled" : "arena.status-disabled");
             source.getSender().sendMessage(render(
                     "arena.list-entry",
                     Placeholder.unparsed("name", arena.getName()),
@@ -670,7 +658,7 @@ public final class PaperCommandRegistrar {
                 source.getSender().sendMessage(render(
                         "arena.status-updated",
                         Placeholder.unparsed("name", name),
-                        Placeholder.parsed("status", enabled ? "<green>enabled</green>" : "<red>disabled</red>")
+                        Placeholder.parsed("status", plugin.getLifeConfig().getRawMessage(enabled ? "arena.status-enabled" : "arena.status-disabled"))
                 ));
             } else {
                 source.getSender().sendMessage(render(
@@ -684,7 +672,7 @@ public final class PaperCommandRegistrar {
 
     private int executeArenaCreateAuto(CommandSourceStack source, String name) {
         if (!(source.getSender() instanceof Player player)) {
-            source.getSender().sendMessage(Component.text("Only players can create an arena using current position."));
+            source.getSender().sendMessage(render("arena.players-only"));
             return 0;
         }
 

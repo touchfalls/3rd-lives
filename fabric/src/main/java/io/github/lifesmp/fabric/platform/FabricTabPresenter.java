@@ -7,7 +7,6 @@ import com.mojang.authlib.GameProfile;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.DeadEntry;
 import io.github.lifesmp.core.ports.TabPresenter;
-import io.github.lifesmp.core.util.FormatUtils;
 import io.github.lifesmp.fabric.mixin.ClientboundPlayerInfoUpdatePacketAccessor;
 import io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager;
 import io.github.lifesmp.fabric.util.FabricMessageFormatter;
@@ -279,7 +278,7 @@ public final class FabricTabPresenter implements TabPresenter {
             if (remaining.isNegative()) {
                 remaining = Duration.ZERO;
             }
-            String timeStr = FormatUtils.formatDurationHoursMinutes(remaining);
+            String timeStr = config.formatDurationHoursMinutes(remaining);
             formatted = formatted.replace("{time}", timeStr)
                                  .replace("<time>", timeStr);
         }

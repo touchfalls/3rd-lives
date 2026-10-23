@@ -73,7 +73,7 @@ class LifeEngineTest {
         giftService = new GiftService(mock(EconomyIntegration.class));
         notificationService = mock(NotificationService.class);
 
-        config = LifeConfig.createDefault();
+        config = LifeConfig.createDefault("ru");
         now = Instant.parse("2026-03-20T12:00:00Z");
 
         lifeEngine = new LifeEngine(

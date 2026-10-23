@@ -61,8 +61,22 @@ class PaperConfigAdapterTest {
 
         // Check key messages
         assertThat(config.getRawMessage("pvp.red-cannot-attack-red"))
-                .contains("Вы не можете нападать, пока у вас 1 жизнь");
+                .contains("You cannot attack while you have 1 life");
         assertThat(config.getRawMessage("pvp.cannot-attack-red"))
-                .contains("Вы не можете нападать на игрока с 1 жизнью");
+                .contains("You cannot attack a player who has 1 life");
+    }
+
+    @Test
+    @DisplayName("PaperConfigAdapter selects the language bundle and applies message overrides on top of it")
+    void appliesLanguageAndOverrides() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("language", "fr");
+        yaml.set("messages.gift.no-pending", "custom text");
+
+        LifeConfig config = PaperConfigAdapter.load(yaml);
+
+        assertThat(config.getRawMessage("gift.no-pending")).isEqualTo("custom text");
+        assertThat(config.getRawMessage("gift.expired")).contains("La demande de don de vie a expiré");
+        assertThat(config.getTimeUnits().day()).isEqualTo("j");
     }
 }

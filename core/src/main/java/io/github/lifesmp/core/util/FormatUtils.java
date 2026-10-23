@@ -21,27 +21,68 @@ public final class FormatUtils {
     private FormatUtils() {}
 
     /**
-     * Formats a {@link Duration} into a human-readable duration string.
+     * Suffixes appended to each part of a formatted duration, for example {@code "h"} in {@code "2h 30m"}.
+     */
+    public record TimeUnits(@NotNull String day, @NotNull String hour, @NotNull String minute, @NotNull String second) {
+
+        public static final TimeUnits ENGLISH = new TimeUnits("d", "h", "m", "s");
+
+        public TimeUnits {
+            Objects.requireNonNull(day, "day cannot be null");
+            Objects.requireNonNull(hour, "hour cannot be null");
+            Objects.requireNonNull(minute, "minute cannot be null");
+            Objects.requireNonNull(second, "second cannot be null");
+        }
+    }
+
+    /**
+     * Formats a {@link Duration} into a human-readable duration string with English unit suffixes.
      *
      * @param duration target duration
      * @return formatted duration string
      */
     @NotNull
     public static String formatDuration(@NotNull Duration duration) {
-        Objects.requireNonNull(duration, "duration cannot be null");
-        return formatDuration(duration.toSeconds());
+        return formatDuration(duration, TimeUnits.ENGLISH);
     }
 
     /**
-     * Primitive overload formatting total seconds into a duration string without allocating a {@link Duration}.
+     * Formats a {@link Duration} into a human-readable duration string.
+     *
+     * @param duration target duration
+     * @param units    unit suffixes
+     * @return formatted duration string
+     */
+    @NotNull
+    public static String formatDuration(@NotNull Duration duration, @NotNull TimeUnits units) {
+        Objects.requireNonNull(duration, "duration cannot be null");
+        return formatDuration(duration.toSeconds(), units);
+    }
+
+    /**
+     * Primitive overload with English unit suffixes.
      *
      * @param totalSeconds duration in seconds
      * @return formatted duration string
      */
     @NotNull
     public static String formatDuration(long totalSeconds) {
+        return formatDuration(totalSeconds, TimeUnits.ENGLISH);
+    }
+
+    /**
+     * Primitive overload formatting total seconds into a duration string without allocating a {@link Duration}.
+     * Seconds are omitted once the duration reaches a full day.
+     *
+     * @param totalSeconds duration in seconds
+     * @param units        unit suffixes
+     * @return formatted duration string
+     */
+    @NotNull
+    public static String formatDuration(long totalSeconds, @NotNull TimeUnits units) {
+        Objects.requireNonNull(units, "units cannot be null");
         if (totalSeconds <= 0L) {
-            return "0с";
+            return "0" + units.second();
         }
 
         long days = totalSeconds / 86400L;
@@ -51,21 +92,32 @@ public final class FormatUtils {
 
         StringBuilder sb = new StringBuilder(16);
         if (days > 0) {
-            sb.append(days).append("д");
+            sb.append(days).append(units.day());
         }
         if (hours > 0) {
             if (!sb.isEmpty()) sb.append(" ");
-            sb.append(hours).append("ч");
+            sb.append(hours).append(units.hour());
         }
         if (minutes > 0) {
             if (!sb.isEmpty()) sb.append(" ");
-            sb.append(minutes).append("м");
+            sb.append(minutes).append(units.minute());
         }
         if (seconds > 0 && days == 0) {
             if (!sb.isEmpty()) sb.append(" ");
-            sb.append(seconds).append("с");
+            sb.append(seconds).append(units.second());
         }
         return sb.toString();
+    }
+
+    /**
+     * Formats a {@link Duration} into hour-minute format with English unit suffixes.
+     *
+     * @param duration target duration
+     * @return formatted duration string in hour-minute format
+     */
+    @NotNull
+    public static String formatDurationHoursMinutes(@NotNull Duration duration) {
+        return formatDurationHoursMinutes(duration, TimeUnits.ENGLISH);
     }
 
     /**
@@ -73,26 +125,40 @@ public final class FormatUtils {
      * primarily used for death ban remaining time displays.
      *
      * @param duration target duration
+     * @param units    unit suffixes
      * @return formatted duration string in hour-minute format
      */
     @NotNull
-    public static String formatDurationHoursMinutes(@NotNull Duration duration) {
+    public static String formatDurationHoursMinutes(@NotNull Duration duration, @NotNull TimeUnits units) {
         Objects.requireNonNull(duration, "duration cannot be null");
-        return formatDurationHoursMinutes(duration.toSeconds());
+        return formatDurationHoursMinutes(duration.toSeconds(), units);
     }
 
     /**
-     * Primitive overload formatting total seconds into hour-minute format without allocating a {@link Duration}.
+     * Primitive overload with English unit suffixes.
      *
      * @param totalSeconds duration in seconds
      * @return formatted duration string in hour-minute format
      */
     @NotNull
     public static String formatDurationHoursMinutes(long totalSeconds) {
+        return formatDurationHoursMinutes(totalSeconds, TimeUnits.ENGLISH);
+    }
+
+    /**
+     * Primitive overload formatting total seconds into hour-minute format without allocating a {@link Duration}.
+     *
+     * @param totalSeconds duration in seconds
+     * @param units        unit suffixes
+     * @return formatted duration string in hour-minute format
+     */
+    @NotNull
+    public static String formatDurationHoursMinutes(long totalSeconds, @NotNull TimeUnits units) {
+        Objects.requireNonNull(units, "units cannot be null");
         long nonNegative = Math.max(0L, totalSeconds);
         long hours = nonNegative / 3600L;
         long minutes = (nonNegative % 3600L) / 60L;
-        return hours + "ч " + minutes + "м";
+        return hours + units.hour() + " " + minutes + units.minute();
     }
 
     /**

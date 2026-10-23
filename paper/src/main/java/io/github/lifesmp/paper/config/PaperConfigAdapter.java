@@ -26,7 +26,7 @@ public final class PaperConfigAdapter {
      */
     @NotNull
     public static LifeConfig load(@NotNull FileConfiguration config) {
-        LifeConfig defaults = LifeConfig.createDefault();
+        LifeConfig defaults = LifeConfig.createDefault(config.getString(LifeConfig.KEY_LANGUAGE));
 
         String prefix = config.getString(LifeConfig.KEY_PREFIX, defaults.getPrefix());
         int maxLives = config.getInt(LifeConfig.KEY_MAX_LIVES, defaults.getMaxLives());

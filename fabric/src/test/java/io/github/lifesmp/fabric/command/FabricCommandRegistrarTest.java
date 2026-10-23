@@ -274,7 +274,7 @@ class FabricCommandRegistrarTest {
 
         adminSource.feedback.clear();
         dispatcher.execute("life pardon UnknownPlayer", adminSource);
-        assertThat(String.join("\n", adminSource.feedback)).contains("UnknownPlayer");
+        assertThat(String.join("\n", adminSource.feedback)).contains("UnknownPlayer").contains("not found");
     }
 
     @Test
@@ -291,7 +291,7 @@ class FabricCommandRegistrarTest {
 
         assertThat(profile.getLives()).isEqualTo(1);
         assertThat(profile.getBannedUntil()).isNull();
-        assertThat(String.join("\n", adminSource.feedback)).contains("OfflinePlayer");
+        assertThat(String.join("\n", adminSource.feedback)).contains("OfflinePlayer").contains("pardoned");
     }
 
     @Test

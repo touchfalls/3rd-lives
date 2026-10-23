@@ -177,7 +177,7 @@ public final class LifeEngine {
                     profileCache.saveProfileImmediately(profile);
                 }
                 Duration remaining = profile.getRemainingBanDuration(now);
-                String remainingFormatted = FormatUtils.formatDurationHoursMinutes(remaining);
+                String remainingFormatted = config.formatDurationHoursMinutes(remaining);
                 String banMessage = config.formatMessage(
                         "death.ban-join",
                         Map.of(
@@ -208,7 +208,7 @@ public final class LifeEngine {
 
             // If player was pardoned by an admin while offline, notify them upon login
             if (pendingPardonNotifications.remove(uuid)) {
-                notificationService.sendMessage(uuid, config.getRawMessage("admin.pardon-join-notify"));
+                notificationService.sendMessage(uuid, config.formatMessage("admin.pardon-join-notify"));
             }
 
             notificationService.updateDisplayNameAndTab(uuid, profile.getLives());
@@ -289,7 +289,7 @@ public final class LifeEngine {
         if (arenaService.isInsideActiveArena(world, x, y, z)) {
             Optional<LifeProfile> cached = profileCache.getCachedProfile(victimUuid);
             int currentLives = cached.map(LifeProfile::getLives).orElse(1);
-            notificationService.sendMessage(victimUuid, config.getRawMessage("death.arena-death"));
+            notificationService.sendMessage(victimUuid, config.formatMessage("death.arena-death"));
             return new DeathResult(false, false, currentLives, true);
         }
 
@@ -313,7 +313,7 @@ public final class LifeEngine {
             }
 
             Duration remaining = Duration.ofSeconds(config.getBanSeconds());
-            String formattedTime = FormatUtils.formatDuration(remaining);
+            String formattedTime = config.formatDuration(remaining);
             String kickMsg = config.formatMessage(
                     "death.ban-kick",
                     Map.of(
@@ -350,7 +350,7 @@ public final class LifeEngine {
                     config.formatMessage(
                             "death.last-life-warning",
                             "time",
-                            FormatUtils.formatDuration(banDuration)
+                            config.formatDuration(banDuration)
                     )
             );
         }

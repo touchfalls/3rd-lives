@@ -92,7 +92,7 @@ public final class PvPPolicyEngine {
             if (victimLives == 1) {
                 // Red vs Red is forbidden
                 return PvPDecision.denyRedCannotAttackRed(
-                        config.getRawMessage("pvp.red-cannot-attack-red")
+                        config.formatMessage("pvp.red-cannot-attack-red")
                 );
             } else {
                 // Red attacking Non-red (2 or 3 lives) is permitted and opens retaliation window
@@ -114,7 +114,7 @@ public final class PvPPolicyEngine {
         }
 
         return PvPDecision.denyCannotAttackRed(
-                config.getRawMessage("pvp.cannot-attack-red")
+                config.formatMessage("pvp.cannot-attack-red")
         );
     }
 

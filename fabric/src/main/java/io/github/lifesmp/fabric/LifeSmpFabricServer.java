@@ -203,7 +203,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
             lifeEngine.handlePlayerJoin(uuid, playerName, now, config).thenAccept(eval -> {
                 if (!eval.allowed()) {
-                    String reason = eval.kickReason() != null ? eval.kickReason() : config.getRawMessage("death.ban-kick");
+                    String reason = eval.kickReason() != null ? eval.kickReason() : config.formatMessage("death.ban-kick");
                     handler.disconnect(FabricMessageFormatter.parse(reason));
                 } else {
                     bridge.updateVisuals(uuid, eval.profile().getLives());

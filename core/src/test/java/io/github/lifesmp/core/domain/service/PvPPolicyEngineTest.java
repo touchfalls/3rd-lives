@@ -35,7 +35,7 @@ class PvPPolicyEngineTest {
     @BeforeEach
     void setUp() {
         pvpPolicyEngine = new PvPPolicyEngine();
-        config = LifeConfig.createDefault();
+        config = LifeConfig.createDefault("ru");
         now = Instant.parse("2026-03-20T12:00:00Z");
 
         playerGreen = UUID.randomUUID();

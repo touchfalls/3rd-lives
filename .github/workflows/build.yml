@@ -1,4 +1,4 @@
-name: Build & Verify
+name: Build
 
 on:
   push:
@@ -13,11 +13,11 @@ permissions:
 
 jobs:
   build:
-    name: Build & Test (Java 21)
+    name: Build and test (Java 21)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
@@ -26,26 +26,26 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Make Gradle Wrapper Executable
-        run: chmod +x gradlew
+      - name: Build and test
+        run: ./gradlew clean dist test verifyJars
 
-      - name: Run Checks & Tests
-        run: ./gradlew check
-
-      - name: Build Distribution Jars
-        run: ./gradlew dist
-
-      - name: Verify Binary Distribution Jars
-        run: ./gradlew verifyJars
-
-      - name: Archive Distribution Artifacts
+      - name: Upload Paper jar
         uses: actions/upload-artifact@v4
         with:
-          name: lifesmp-artifacts
-          path: dist/
+          name: lifesmp-paper
+          path: dist/paper/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Fabric jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifesmp-fabric
+          path: dist/fabric/
+          if-no-files-found: error
           retention-days: 14

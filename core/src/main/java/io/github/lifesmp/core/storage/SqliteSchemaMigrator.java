@@ -19,7 +19,7 @@ import java.util.Objects;
 public final class SqliteSchemaMigrator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqliteSchemaMigrator.class);
-    private static final int CURRENT_VERSION = 3;
+    private static final int CURRENT_VERSION = 4;
 
     private final DatabaseManager databaseManager;
 
@@ -53,6 +53,12 @@ public final class SqliteSchemaMigrator {
                 applyV3(conn);
                 recordVersion(conn, 3);
                 LOGGER.info("Applied migration V3: added last_name column to players and idx_players_last_name");
+            }
+
+            if (current < 4) {
+                applyV4(conn);
+                recordVersion(conn, 4);
+                LOGGER.info("Applied migration V4: added pardon_notice column to players");
             }
 
             LOGGER.info("Database schema is up to date at version {}", CURRENT_VERSION);
@@ -142,6 +148,19 @@ public final class SqliteSchemaMigrator {
                 stmt.execute("ALTER TABLE players ADD COLUMN last_name TEXT;");
             }
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_players_last_name ON players(last_name);");
+        }
+    }
+
+    private void applyV4(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(players);")) {
+                while (rs.next()) {
+                    if ("pardon_notice".equalsIgnoreCase(rs.getString("name"))) {
+                        return;
+                    }
+                }
+            }
+            stmt.execute("ALTER TABLE players ADD COLUMN pardon_notice INTEGER NOT NULL DEFAULT 0;");
         }
     }
 }

@@ -56,17 +56,19 @@ public final class ArenaService {
      * @param x2    corner 2 X
      * @param y2    corner 2 Y
      * @param z2    corner 2 Z
-     * @return CompletableFuture completing with created arena
+     * @return CompletableFuture completing with true if created, false if an arena with this name already exists
      */
-    public CompletableFuture<Arena> createArena(
+    public CompletableFuture<Boolean> createArena(
             @NotNull String name,
             @NotNull String world,
             double x1, double y1, double z1,
             double x2, double y2, double z2
     ) {
         Arena arena = new Arena(name, world, x1, y1, z1, x2, y2, z2, true);
-        arenas.put(name.toLowerCase(Locale.ROOT), arena);
-        return arenaRepository.saveArena(arena).thenApply(v -> arena);
+        if (arenas.putIfAbsent(name.toLowerCase(Locale.ROOT), arena) != null) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return arenaRepository.saveArena(arena).thenApply(v -> true);
     }
 
     /**

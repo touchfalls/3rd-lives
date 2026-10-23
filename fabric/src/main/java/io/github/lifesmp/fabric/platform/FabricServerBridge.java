@@ -47,24 +47,28 @@ public final class FabricServerBridge implements FabricPlayerBridge {
 
     @Override
     public void sendMessage(@NotNull UUID playerUuid, @NotNull String rawText, boolean actionBar) {
-        if (server == null) {
+        MinecraftServer srv = server;
+        if (srv == null) {
             if (!actionBar) {
                 pendingMessages.computeIfAbsent(playerUuid, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(rawText);
             }
             LOGGER.debug("[Fabric-MSG] (Server offline) {} -> {}: {}", actionBar ? "ACTIONBAR" : "CHAT", playerUuid, rawText);
             return;
         }
-        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-        if (player != null) {
-            Component component = FabricMessageFormatter.parse(rawText);
-            if (actionBar) {
-                player.sendSystemMessage(component, true);
-            } else {
-                player.sendSystemMessage(component);
+        // Callers include database-thread callbacks; MinecraftServer.execute runs inline when already on the server thread.
+        srv.execute(() -> {
+            ServerPlayer player = srv.getPlayerList().getPlayer(playerUuid);
+            if (player != null) {
+                Component component = FabricMessageFormatter.parse(rawText);
+                if (actionBar) {
+                    player.sendSystemMessage(component, true);
+                } else {
+                    player.sendSystemMessage(component);
+                }
+            } else if (!actionBar) {
+                pendingMessages.computeIfAbsent(playerUuid, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(rawText);
             }
-        } else if (!actionBar) {
-            pendingMessages.computeIfAbsent(playerUuid, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(rawText);
-        }
+        });
     }
 
     /**
@@ -81,37 +85,42 @@ public final class FabricServerBridge implements FabricPlayerBridge {
 
     @Override
     public void broadcast(@NotNull String rawText) {
-        if (server == null) {
+        MinecraftServer srv = server;
+        if (srv == null) {
             LOGGER.info("[Fabric-BROADCAST] (Server offline) {}", rawText);
             return;
         }
-        Component component = FabricMessageFormatter.parse(rawText);
-        server.getPlayerList().broadcastSystemMessage(component, false);
+        srv.execute(() -> srv.getPlayerList().broadcastSystemMessage(FabricMessageFormatter.parse(rawText), false));
     }
 
     @Override
     public void kickPlayer(@NotNull UUID playerUuid, @NotNull String reason) {
-        if (server == null) {
+        MinecraftServer srv = server;
+        if (srv == null) {
             LOGGER.warn("[Fabric-KICK] Player {} kicked (server offline): {}", playerUuid, reason);
             return;
         }
-        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-        if (player != null && player.connection != null) {
-            Component component = FabricMessageFormatter.parse(reason);
-            player.connection.disconnect(component);
-        }
+        srv.execute(() -> {
+            ServerPlayer player = srv.getPlayerList().getPlayer(playerUuid);
+            if (player != null && player.connection != null) {
+                player.connection.disconnect(FabricMessageFormatter.parse(reason));
+            }
+        });
     }
 
     @Override
     public void updateVisuals(@NotNull UUID playerUuid, int lives) {
-        if (server == null) return;
-        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-        if (player != null) {
-            server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(
-                    ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
-                    player
-            ));
-        }
+        MinecraftServer srv = server;
+        if (srv == null) return;
+        srv.execute(() -> {
+            ServerPlayer player = srv.getPlayerList().getPlayer(playerUuid);
+            if (player != null) {
+                srv.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(
+                        ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
+                        player
+                ));
+            }
+        });
     }
 
     /**

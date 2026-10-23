@@ -12,6 +12,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.Arena;
 import io.github.lifesmp.core.domain.model.LifeProfile;
+import io.github.lifesmp.core.domain.service.AdminService;
 import io.github.lifesmp.core.domain.service.GiftService;
 import io.github.lifesmp.core.domain.service.LifeEngine;
 import io.github.lifesmp.core.util.FormatUtils;
@@ -20,8 +21,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -295,16 +298,8 @@ public final class FabricCommandRegistrar<S> {
         return 1;
     }
 
-    /**
-     * Resolves a player name to a UUID: online players first, then the last known name stored in the database,
-     * so that admin commands also reach offline and banned players.
-     */
     private CompletableFuture<Optional<UUID>> resolvePlayerUuid(@NotNull String name) {
-        UUID online = adapter.getPlayerUuidByName(name);
-        if (online != null) {
-            return CompletableFuture.completedFuture(Optional.of(online));
-        }
-        return lifeEngine.getProfileCache().findUuidByLastName(name);
+        return lifeEngine.getAdminService().resolveUuid(name, adapter.getPlayerUuidByName(name));
     }
 
     private int executePardon(S source, String targetName) {
@@ -315,7 +310,7 @@ public final class FabricCommandRegistrar<S> {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
+            lifeEngine.getAdminService().pardon(targetUuid, Instant.now()).thenAccept(result -> {
                 switch (result.status()) {
                     case SUCCESS -> {
                         adapter.sendFeedback(source, config.formatMessage(
@@ -342,8 +337,8 @@ public final class FabricCommandRegistrar<S> {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.reset(targetUuid, config).thenAccept(result -> {
-                if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
+            lifeEngine.getAdminService().reset(targetUuid, config).thenAccept(result -> {
+                if (result.status() == AdminService.ResetStatus.SUCCESS) {
                     adapter.sendFeedback(source, config.formatMessage(
                             "admin.reset-success",
                             Map.of(
@@ -444,7 +439,8 @@ public final class FabricCommandRegistrar<S> {
                 "lives", String.valueOf(result.recipientNewLives())
         )));
         server.getBridge().updateVisuals(recipientUuid, result.recipientNewLives());
-        lifeEngine.getProfileCache().markDirty(recipientUuid);
+        // Store donor and recipient in one transaction so a crash cannot keep only half of the transfer.
+        List<LifeProfile> changed = new ArrayList<>(List.of(recipientProfile));
 
         if (donorUuid != null) {
             server.getBridge().sendMessage(
@@ -453,8 +449,9 @@ public final class FabricCommandRegistrar<S> {
                     false
             );
             server.getBridge().updateVisuals(donorUuid, result.donorNewLives());
-            lifeEngine.getProfileCache().markDirty(donorUuid);
+            lifeEngine.getProfileCache().getCachedProfile(donorUuid).ifPresent(changed::add);
         }
+        lifeEngine.getProfileCache().saveProfilesImmediately(changed);
         return 1;
     }
 
@@ -472,7 +469,7 @@ public final class FabricCommandRegistrar<S> {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.adminSetLives(targetUuid, lives, config).thenRun(() -> adapter.sendFeedback(
+            lifeEngine.getAdminService().setLives(targetUuid, lives, config).thenRun(() -> adapter.sendFeedback(
                     source,
                     config.formatMessage("admin.set-lives", Map.of("player", targetName, "lives", String.valueOf(lives)))
             ));
@@ -547,9 +544,9 @@ public final class FabricCommandRegistrar<S> {
             double x2, double y2, double z2
     ) {
         String world = adapter.getWorldName(source);
-        lifeEngine.getArenaService().createArena(name, world, x1, y1, z1, x2, y2, z2).thenAccept(arena -> {
-            adapter.sendFeedback(source, server.getLifeConfig().formatMessage("arena.created", "name", name));
-        });
+        lifeEngine.getArenaService().createArena(name, world, x1, y1, z1, x2, y2, z2).thenAccept(created ->
+                adapter.sendFeedback(source, server.getLifeConfig().formatMessage(
+                        created ? "arena.created" : "arena.already-exists", "name", name)));
         return 1;
     }
 }

@@ -15,13 +15,15 @@ import io.github.lifesmp.paper.platform.PaperNotificationService;
 import io.github.lifesmp.paper.platform.PaperPlatformScheduler;
 import io.github.lifesmp.paper.scoreboard.PaperScoreboardManager;
 import io.github.lifesmp.paper.task.AutosaveTask;
-import io.github.lifesmp.paper.task.RegenerationTask;
 import io.github.lifesmp.paper.util.AttackerAttributor;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
+import java.time.Instant;
 
 /**
  * Main Paper plugin entrypoint for Life SMP.
@@ -100,7 +102,6 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
         pm.registerEvents(new CombatDamageListener(lifeEngine, attackerAttributor, this::getLifeConfig), this);
         pm.registerEvents(new PlayerDeathListener(lifeEngine, attackerAttributor, this::getLifeConfig), this);
         pm.registerEvents(new PlayerJoinQuitListener(lifeEngine, scoreboardManager, attackerAttributor, this::getLifeConfig), this);
-        pm.registerEvents(new PlayerMoveListener(regenerationService), this);
         pm.registerEvents(new ChatListener(profileCache, this::getLifeConfig), this);
 
         // Register Brigadier commands
@@ -114,19 +115,16 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
 
     private void startTasks() {
         // Regeneration task: runs every 20 ticks (1s)
-        this.regenTask = platformScheduler.runRepeatingSync(
-                new RegenerationTask(
-                        profileCache,
-                        regenerationService,
-                        pvpPolicyEngine,
-                        giftService,
-                        notificationService,
-                        deadTabService,
-                        this::getLifeConfig
-                ),
-                20L,
-                20L
-        );
+        this.regenTask = platformScheduler.runRepeatingSync(() -> {
+            Instant now = Instant.now();
+            LifeConfig config = getLifeConfig();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location loc = player.getLocation();
+                lifeEngine.tickOnlinePlayer(
+                        player.getUniqueId(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ(), now, config);
+            }
+            lifeEngine.tickServer(now);
+        }, 20L, 20L);
 
         // Autosave task: runs every autosave-minutes
         long autosaveTicks = Math.max(1200L, Math.round(lifeConfig.getAutosaveSeconds() * 20.0));

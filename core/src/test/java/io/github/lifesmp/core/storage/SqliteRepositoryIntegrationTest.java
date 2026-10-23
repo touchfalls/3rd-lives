@@ -47,6 +47,18 @@ class SqliteRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("Players table persists the pending pardon notice flag")
+    void playerProfilePersistsPardonNotice() {
+        UUID playerUuid = UUID.randomUUID();
+        LifeProfile profile = new LifeProfile(playerUuid, 1, 0L, null, Instant.parse("2026-03-20T12:00:00Z"), false);
+        profile.setPardonNoticePending(true);
+
+        playerRepository.savePlayer(profile).join();
+
+        assertThat(playerRepository.loadPlayer(playerUuid).join().orElseThrow().isPardonNoticePending()).isTrue();
+    }
+
+    @Test
     @DisplayName("Players table persists gift_regen_active flag and recovers state after server restart")
     void playerProfileSurvivesRestartWithGiftRegenFlag() {
         UUID playerUuid = UUID.randomUUID();

@@ -102,25 +102,6 @@ public final class LifeProfileCache {
     }
 
     /**
-     * Checks if a player's profile has unsaved modifications.
-     *
-     * @param uuid player UUID
-     * @return true if dirty
-     */
-    public boolean isDirty(@NotNull UUID uuid) {
-        return dirtyVersions.containsKey(uuid);
-    }
-
-    /**
-     * Returns count of currently dirty profiles.
-     *
-     * @return dirty profiles count
-     */
-    public int getDirtyCount() {
-        return dirtyVersions.size();
-    }
-
-    /**
      * Persists a profile immediately (used on player quit or death ban).
      *
      * @param profile profile to persist
@@ -142,6 +123,30 @@ public final class LifeProfileCache {
                     LOGGER.error("Immediate save failed for {}. State remains in memory and will be retried.",
                             uuid, ex);
                     markDirty(uuid);
+                    return null;
+                });
+    }
+
+    /**
+     * Persists several profiles in one database transaction, for changes that must be stored together
+     * (for example a life moving from one player to another).
+     *
+     * @param profiles profiles to persist
+     * @return CompletableFuture completing when the write finishes
+     */
+    public CompletableFuture<Void> saveProfilesImmediately(@NotNull Collection<LifeProfile> profiles) {
+        Map<UUID, Long> versions = new HashMap<>();
+        List<LifeProfile> snapshots = new ArrayList<>(profiles.size());
+        for (LifeProfile profile : profiles) {
+            markDirty(profile.getUuid());
+            versions.put(profile.getUuid(), dirtyVersions.get(profile.getUuid()));
+            snapshots.add(profile.snapshot());
+        }
+        return repository.saveAll(snapshots)
+                .thenRun(() -> versions.forEach(dirtyVersions::remove))
+                .exceptionally(ex -> {
+                    LOGGER.error("Immediate batch save failed for {} profiles. They stay dirty and will be retried.",
+                            snapshots.size(), ex);
                     return null;
                 });
     }

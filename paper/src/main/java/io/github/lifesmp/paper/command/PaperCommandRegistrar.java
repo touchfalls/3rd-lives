@@ -12,6 +12,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.Arena;
 import io.github.lifesmp.core.domain.model.LifeProfile;
+import io.github.lifesmp.core.domain.service.AdminService;
 import io.github.lifesmp.core.domain.service.GiftService;
 import io.github.lifesmp.core.domain.service.LifeEngine;
 import io.github.lifesmp.core.util.FormatUtils;
@@ -32,7 +33,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -471,10 +474,12 @@ public final class PaperCommandRegistrar {
         }
 
         plugin.getScoreboardManager().updatePlayerVisuals(recipient, result.recipientNewLives());
-        lifeEngine.getProfileCache().markDirty(recipient.getUniqueId());
+        // Store donor and recipient in one transaction so a crash cannot keep only half of the transfer.
+        List<LifeProfile> changed = new ArrayList<>(List.of(recipientProfile));
         if (donorUuid != null) {
-            lifeEngine.getProfileCache().markDirty(donorUuid);
+            lifeEngine.getProfileCache().getCachedProfile(donorUuid).ifPresent(changed::add);
         }
+        lifeEngine.getProfileCache().saveProfilesImmediately(changed);
 
         return 1;
     }
@@ -495,7 +500,7 @@ public final class PaperCommandRegistrar {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.adminSetLives(targetUuid, lives, config).thenRun(() -> {
+            lifeEngine.getAdminService().setLives(targetUuid, lives, config).thenRun(() -> {
                 sender.sendMessage(render(
                         config,
                         "admin.set-lives",
@@ -511,16 +516,9 @@ public final class PaperCommandRegistrar {
         return 1;
     }
 
-    /**
-     * Resolves a player name to a UUID: online players first, then the last known name stored in the database.
-     * {@code Bukkit.getOfflinePlayer(String)} is avoided because it may block on a Mojang profile lookup.
-     */
     private CompletableFuture<Optional<UUID>> resolvePlayerUuid(@NotNull String name) {
         Player onlinePlayer = Bukkit.getPlayerExact(name);
-        if (onlinePlayer != null) {
-            return CompletableFuture.completedFuture(Optional.of(onlinePlayer.getUniqueId()));
-        }
-        return lifeEngine.getProfileCache().findUuidByLastName(name);
+        return lifeEngine.getAdminService().resolveUuid(name, onlinePlayer != null ? onlinePlayer.getUniqueId() : null);
     }
 
     private int executePardon(CommandSourceStack source, String targetName) {
@@ -533,7 +531,7 @@ public final class PaperCommandRegistrar {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.pardon(targetUuid, Instant.now()).thenAccept(result -> {
+            lifeEngine.getAdminService().pardon(targetUuid, Instant.now()).thenAccept(result -> {
                 switch (result.status()) {
                     case SUCCESS -> {
                         sender.sendMessage(render(
@@ -573,8 +571,8 @@ public final class PaperCommandRegistrar {
                 return;
             }
             UUID targetUuid = optUuid.get();
-            lifeEngine.reset(targetUuid, config).thenAccept(result -> {
-                if (result.status() == LifeEngine.ResetStatus.SUCCESS) {
+            lifeEngine.getAdminService().reset(targetUuid, config).thenAccept(result -> {
+                if (result.status() == AdminService.ResetStatus.SUCCESS) {
                     sender.sendMessage(render(
                             config,
                             "admin.reset-success",
@@ -693,12 +691,11 @@ public final class PaperCommandRegistrar {
             double x2, double y2, double z2
     ) {
         String worldName = source.getLocation().getWorld().getName();
-        lifeEngine.getArenaService().createArena(name, worldName, x1, y1, z1, x2, y2, z2).thenAccept(arena -> {
-            source.getSender().sendMessage(render(
-                    "arena.created",
-                    Placeholder.unparsed("name", name)
-            ));
-        });
+        lifeEngine.getArenaService().createArena(name, worldName, x1, y1, z1, x2, y2, z2).thenAccept(created ->
+                source.getSender().sendMessage(render(
+                        created ? "arena.created" : "arena.already-exists",
+                        Placeholder.unparsed("name", name)
+                )));
         return 1;
     }
 }

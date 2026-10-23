@@ -201,7 +201,8 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
             Instant now = Instant.now();
             LifeConfig config = this.lifeConfig;
 
-            lifeEngine.handlePlayerJoin(uuid, playerName, now, config).thenAccept(eval -> {
+            // The profile may load on the database thread; kicking and packets must run on the server thread.
+            lifeEngine.handlePlayerJoin(uuid, playerName, now, config).thenAcceptAsync(eval -> {
                 if (!eval.allowed()) {
                     String reason = eval.kickReason() != null ? eval.kickReason() : config.formatMessage("death.ban-kick");
                     handler.disconnect(FabricMessageFormatter.parse(reason));
@@ -212,7 +213,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
                         deadTabService.onPlayerJoin(uuid);
                     }
                 }
-            });
+            }, server);
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -361,23 +362,14 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
             LifeConfig config = this.lifeConfig;
 
             for (ServerPlayer player : bridge.getServer().getPlayerList().getPlayers()) {
-                UUID uuid = player.getUUID();
-                profileCache.getCachedProfile(uuid).ifPresent(profile -> {
-                    RegenerationService.TickResult result = regenerationService.tickPlayer(
-                            uuid, profile, 1L, now, config
-                    );
-                    if (result.lifeGained()) {
-                        profileCache.markDirty(uuid);
-                        bridge.updateVisuals(uuid, result.newLives());
-                        String msg = config.formatMessage("regen.life-gained", "lives", String.valueOf(result.newLives()));
-                        bridge.sendMessage(uuid, msg, false);
-                    }
-                });
+                lifeEngine.tickOnlinePlayer(
+                        player.getUUID(),
+                        player.level().dimension().location().toString(),
+                        player.getX(), player.getY(), player.getZ(),
+                        now, config
+                );
             }
-
-            if (deadTabService != null) {
-                deadTabService.tick(now);
-            }
+            lifeEngine.tickServer(now);
         }, 20L, 20L);
 
         // Autosave task

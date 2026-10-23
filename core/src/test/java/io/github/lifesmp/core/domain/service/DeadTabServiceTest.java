@@ -318,8 +318,10 @@ class DeadTabServiceTest {
         assertTrue(tabPresenter.shownDead.containsKey(victimUuid));
 
         // Admin pardons player by name
-        LifeEngine.PardonResult pardonResult = lifeEngine.pardonByName("VictimUser", now).join();
-        assertEquals(LifeEngine.PardonStatus.SUCCESS, pardonResult.status());
+        AdminService admin = lifeEngine.getAdminService();
+        UUID resolved = admin.resolveUuid("VictimUser", null).join().orElseThrow();
+        AdminService.PardonResult pardonResult = admin.pardon(resolved, now).join();
+        assertEquals(AdminService.PardonStatus.SUCCESS, pardonResult.status());
 
         // Player must be immediately removed from DeadTabService
         assertFalse(deadTabService.getDeadEntry(victimUuid).isPresent());

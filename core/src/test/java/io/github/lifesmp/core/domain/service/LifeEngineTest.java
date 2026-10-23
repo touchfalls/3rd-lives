@@ -95,9 +95,9 @@ class LifeEngineTest {
         LifeProfile bannedProfile = new LifeProfile(uuid, 0, 1000L, banUntil, now, true);
         dbStore.put(uuid, bannedProfile);
 
-        LifeEngine.PardonResult result = lifeEngine.pardon(uuid, now).join();
+        AdminService.PardonResult result = lifeEngine.getAdminService().pardon(uuid, now).join();
 
-        assertThat(result.status()).isEqualTo(LifeEngine.PardonStatus.SUCCESS);
+        assertThat(result.status()).isEqualTo(AdminService.PardonStatus.SUCCESS);
         assertThat(result.profile()).isNotNull();
         assertThat(result.profile().getLives()).isEqualTo(1);
         assertThat(result.profile().getBannedUntil()).isNull();
@@ -124,7 +124,7 @@ class LifeEngineTest {
         dbStore.put(uuid, bannedProfile);
 
         // Admin pardons player
-        lifeEngine.pardon(uuid, now).join();
+        lifeEngine.getAdminService().pardon(uuid, now).join();
 
         // Simulate time advancing past original ban time
         Instant joinTime = now.plusSeconds(7200);
@@ -183,9 +183,9 @@ class LifeEngineTest {
         LifeProfile normalProfile = new LifeProfile(uuid, 2, 500L, null, now, false);
         dbStore.put(uuid, normalProfile);
 
-        LifeEngine.PardonResult result = lifeEngine.pardon(uuid, now).join();
+        AdminService.PardonResult result = lifeEngine.getAdminService().pardon(uuid, now).join();
 
-        assertThat(result.status()).isEqualTo(LifeEngine.PardonStatus.NOT_BANNED);
+        assertThat(result.status()).isEqualTo(AdminService.PardonStatus.NOT_BANNED);
         assertThat(result.profile().getLives()).isEqualTo(2);
         assertThat(dbStore.get(uuid).getLives()).isEqualTo(2);
     }
@@ -194,9 +194,9 @@ class LifeEngineTest {
     @DisplayName("Pardoning a non-existent player returns NOT_FOUND")
     void testPardonNonExistentPlayer() {
         UUID uuid = UUID.randomUUID();
-        LifeEngine.PardonResult result = lifeEngine.pardon(uuid, now).join();
+        AdminService.PardonResult result = lifeEngine.getAdminService().pardon(uuid, now).join();
 
-        assertThat(result.status()).isEqualTo(LifeEngine.PardonStatus.NOT_FOUND);
+        assertThat(result.status()).isEqualTo(AdminService.PardonStatus.NOT_FOUND);
         assertThat(result.profile()).isNull();
     }
 
@@ -208,9 +208,9 @@ class LifeEngineTest {
         LifeProfile bannedProfile = new LifeProfile(uuid, 0, 800L, banUntil, now, true);
         dbStore.put(uuid, bannedProfile);
 
-        LifeEngine.ResetResult result = lifeEngine.reset(uuid, config, now).join();
+        AdminService.ResetResult result = lifeEngine.getAdminService().reset(uuid, config).join();
 
-        assertThat(result.status()).isEqualTo(LifeEngine.ResetStatus.SUCCESS);
+        assertThat(result.status()).isEqualTo(AdminService.ResetStatus.SUCCESS);
         assertThat(result.profile().getLives()).isEqualTo(3);
         assertThat(result.profile().getBannedUntil()).isNull();
         assertThat(result.profile().getOnlineSecondsSinceLastLoss()).isEqualTo(0L);
@@ -231,9 +231,9 @@ class LifeEngineTest {
     @DisplayName("Resetting a non-existent player returns NOT_FOUND")
     void testResetNonExistentPlayer() {
         UUID uuid = UUID.randomUUID();
-        LifeEngine.ResetResult result = lifeEngine.reset(uuid, config, now).join();
+        AdminService.ResetResult result = lifeEngine.getAdminService().reset(uuid, config).join();
 
-        assertThat(result.status()).isEqualTo(LifeEngine.ResetStatus.NOT_FOUND);
+        assertThat(result.status()).isEqualTo(AdminService.ResetStatus.NOT_FOUND);
         assertThat(result.profile()).isNull();
     }
 
@@ -243,6 +243,7 @@ class LifeEngineTest {
         UUID uuid = UUID.randomUUID();
         LifeProfile profile = new LifeProfile(uuid, 2, 500L, null, now, false);
         dbStore.put(uuid, profile);
+        profileCache.getOrLoadProfile(uuid, config.getMaxLives(), now).join();
 
         // Death 1: lives 2 -> 1
         LifeEngine.DeathResult r1 = lifeEngine.handlePlayerDeath(uuid, "world", 0, 64, 0, null, now, config);
@@ -265,5 +266,80 @@ class LifeEngineTest {
         ArgumentCaptor<String> kickCaptor = ArgumentCaptor.forClass(String.class);
         verify(notificationService).kickPlayer(eq(uuid), kickCaptor.capture());
         assertThat(kickCaptor.getValue()).contains("ВЫ ПОТЕРЯЛИ ВСЕ ЖИЗНИ!");
+    }
+
+    @Test
+    @DisplayName("tickOnlinePlayer pauses regeneration for a player who never moves after joining")
+    void tickPausesRegenerationForPlayerWhoNeverMoves() {
+        UUID uuid = UUID.randomUUID();
+        dbStore.put(uuid, new LifeProfile(uuid, 2, 0L, null, now, false));
+        LifeProfile profile = profileCache.getOrLoadProfile(uuid, config.getMaxLives(), now).join();
+
+        lifeEngine.tickOnlinePlayer(uuid, "world", 0, 64, 0, now, config);
+        long afterFirstTick = profile.getOnlineSecondsSinceLastLoss();
+        assertThat(afterFirstTick).isEqualTo(1L);
+
+        Instant afterAfkThreshold = now.plusSeconds(config.getAfkSeconds() + 1);
+        lifeEngine.tickOnlinePlayer(uuid, "world", 0, 64, 0, afterAfkThreshold, config);
+        assertThat(profile.getOnlineSecondsSinceLastLoss()).isEqualTo(afterFirstTick);
+
+        lifeEngine.tickOnlinePlayer(uuid, "world", 5, 64, 0, afterAfkThreshold.plusSeconds(1), config);
+        assertThat(profile.getOnlineSecondsSinceLastLoss()).isEqualTo(afterFirstTick + 1);
+    }
+
+    @Test
+    @DisplayName("A death that does not ban is written to the database immediately")
+    void nonBanDeathIsSavedImmediately() {
+        UUID uuid = UUID.randomUUID();
+        dbStore.put(uuid, new LifeProfile(uuid, 3, 0L, null, now, false));
+        profileCache.getOrLoadProfile(uuid, config.getMaxLives(), now).join();
+
+        lifeEngine.handlePlayerDeath(uuid, "world", 0, 64, 0, null, now, config);
+
+        assertThat(dbStore.get(uuid).getLives()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Quitting saves the profile and removes it from memory")
+    void quitSavesAndEvictsProfile() {
+        UUID uuid = UUID.randomUUID();
+        lifeEngine.handlePlayerJoin(uuid, "Leaver", now, config).join();
+        assertThat(profileCache.getCachedProfile(uuid)).isPresent();
+
+        lifeEngine.handlePlayerQuit(uuid, now);
+
+        assertThat(profileCache.getCachedProfile(uuid)).isEmpty();
+        assertThat(dbStore.get(uuid).getLastName()).isEqualTo("Leaver");
+    }
+
+    @Test
+    @DisplayName("Pardon notice is stored with the profile and cleared once the player has joined")
+    void pardonNoticeSurvivesRestartAndIsClearedOnJoin() {
+        UUID uuid = UUID.randomUUID();
+        dbStore.put(uuid, new LifeProfile(uuid, 0, 0L, now.plusSeconds(3600), now, false));
+
+        lifeEngine.getAdminService().pardon(uuid, now).join();
+        assertThat(dbStore.get(uuid).isPardonNoticePending()).isTrue();
+
+        lifeEngine.handlePlayerJoin(uuid, now, config).join();
+        lifeEngine.handlePlayerQuit(uuid, now);
+
+        assertThat(dbStore.get(uuid).isPardonNoticePending()).isFalse();
+    }
+
+    @Test
+    @DisplayName("saveProfilesImmediately stores several profiles together and clears their dirty state")
+    void batchSaveStoresAllProfiles() {
+        UUID donor = UUID.randomUUID();
+        UUID recipient = UUID.randomUUID();
+        LifeProfile donorProfile = profileCache.getOrLoadProfile(donor, config.getMaxLives(), now).join();
+        LifeProfile recipientProfile = profileCache.getOrLoadProfile(recipient, 1, now).join();
+        donorProfile.decrementLives();
+        recipientProfile.incrementLives();
+
+        profileCache.saveProfilesImmediately(java.util.List.of(donorProfile, recipientProfile)).join();
+
+        assertThat(dbStore.get(donor).getLives()).isEqualTo(2);
+        assertThat(dbStore.get(recipient).getLives()).isEqualTo(2);
     }
 }

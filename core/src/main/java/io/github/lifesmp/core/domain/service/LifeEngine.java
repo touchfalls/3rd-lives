@@ -10,13 +10,14 @@ import io.github.lifesmp.core.storage.LifeProfileCache;
 import io.github.lifesmp.core.util.FormatUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +29,8 @@ import java.util.function.Supplier;
  * and ban enforcement.
  */
 public final class LifeEngine {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LifeEngine.class);
 
     private final LifeProfileCache profileCache;
     private final ArenaService arenaService;
@@ -41,8 +44,7 @@ public final class LifeEngine {
     // Idempotency: debouncing multiple death events firing in the same tick / window
     private final Map<UUID, Instant> lastDeathTimestamps = new ConcurrentHashMap<>();
 
-    // Set of player UUIDs pardoned while offline waiting for join notification
-    private final Set<UUID> pendingPardonNotifications = ConcurrentHashMap.newKeySet();
+    private final AdminService adminService;
 
     public LifeEngine(
             @NotNull LifeProfileCache profileCache,
@@ -103,6 +105,7 @@ public final class LifeEngine {
         this.notificationService = Objects.requireNonNull(notificationService, "notificationService cannot be null");
         this.configSupplier = Objects.requireNonNull(configSupplier, "configSupplier cannot be null");
         this.deadTabService = deadTabService;
+        this.adminService = new AdminService(profileCache, notificationService, () -> this.deadTabService);
     }
 
     public void setConfigSupplier(@NotNull Supplier<LifeConfig> configSupplier) {
@@ -116,6 +119,11 @@ public final class LifeEngine {
     @Nullable
     public DeadTabService getDeadTabService() {
         return deadTabService;
+    }
+
+    @NotNull
+    public AdminService getAdminService() {
+        return adminService;
     }
 
     public record JoinEvaluation(
@@ -207,7 +215,9 @@ public final class LifeEngine {
             }
 
             // If player was pardoned by an admin while offline, notify them upon login
-            if (pendingPardonNotifications.remove(uuid)) {
+            if (profile.isPardonNoticePending()) {
+                profile.setPardonNoticePending(false);
+                profileCache.markDirty(uuid);
                 notificationService.sendMessage(uuid, config.formatMessage("admin.pardon-join-notify"));
             }
 
@@ -293,19 +303,32 @@ public final class LifeEngine {
             return new DeathResult(false, false, currentLives, true);
         }
 
-        LifeProfile profile = profileCache.getOrLoadProfile(victimUuid, config.getMaxLives(), now).join();
+        Optional<LifeProfile> loaded = profileCache.getCachedProfile(victimUuid);
+        if (loaded.isEmpty()) {
+            // Online players are cached on join; loading here would block the server thread on the database.
+            LOGGER.warn("Ignoring death of {}: profile is not loaded", victimUuid);
+            return new DeathResult(false, false, 0, false);
+        }
+        LifeProfile profile = loaded.get();
 
-        int remainingLives = profile.decrementLives();
-        profile.resetOnlineSeconds();
-        if (playerName != null && !playerName.isBlank()) {
-            profile.setLastName(playerName);
+        int remainingLives;
+        Instant bannedUntil = null;
+        // Lock so an autosave snapshot never sees the lost life without the ban.
+        synchronized (profile) {
+            remainingLives = profile.decrementLives();
+            profile.resetOnlineSeconds();
+            if (playerName != null && !playerName.isBlank()) {
+                profile.setLastName(playerName);
+            }
+            if (remainingLives <= 0) {
+                bannedUntil = now.plusSeconds(config.getBanSeconds());
+                profile.setBannedUntil(bannedUntil);
+            }
         }
         profileCache.markDirty(victimUuid);
         pvpPolicyEngine.clearRetaliationForPlayer(victimUuid);
 
         if (remainingLives <= 0) {
-            Instant bannedUntil = now.plusSeconds(config.getBanSeconds());
-            profile.setBannedUntil(bannedUntil);
             profileCache.saveProfileImmediately(profile);
 
             if (deadTabService != null) {
@@ -325,6 +348,7 @@ public final class LifeEngine {
             return new DeathResult(true, true, remainingLives, false);
         }
 
+        profileCache.saveProfileImmediately(profile);
         notificationService.updateDisplayNameAndTab(victimUuid, remainingLives);
 
         String colorHex = config.getColorHex(remainingLives);
@@ -373,292 +397,44 @@ public final class LifeEngine {
 
         profileCache.getCachedProfile(uuid).ifPresent(profile -> {
             profile.setLastSeen(now);
-            profileCache.saveProfileImmediately(profile);
-        });
-    }
-
-    public enum PardonStatus {
-        SUCCESS,
-        NOT_BANNED,
-        NOT_FOUND
-    }
-
-    public record PardonResult(
-            @NotNull PardonStatus status,
-            @Nullable LifeProfile profile
-    ) {
-        public static PardonResult success(@NotNull LifeProfile profile) {
-            return new PardonResult(PardonStatus.SUCCESS, profile);
-        }
-
-        public static PardonResult notBanned(@NotNull LifeProfile profile) {
-            return new PardonResult(PardonStatus.NOT_BANNED, profile);
-        }
-
-        public static PardonResult notFound() {
-            return new PardonResult(PardonStatus.NOT_FOUND, null);
-        }
-    }
-
-    /**
-     * Pardons a player by prematurely ending their death ban.
-     *
-     * @param uuid player UUID
-     * @return CompletableFuture completing with PardonResult
-     */
-    @NotNull
-    public CompletableFuture<PardonResult> pardon(@NotNull UUID uuid) {
-        return pardon(uuid, Instant.now());
-    }
-
-    /**
-     * Pardons a player by prematurely ending their death ban at the specified instant.
-     * Sets their lives to exactly 1 (red), resets bannedUntil = null, onlineSeconds = 0, and giftRegenActive = false.
-     * Works for both online and offline players.
-     *
-     * @param uuid player UUID
-     * @param now  current instant
-     * @return CompletableFuture completing with PardonResult
-     */
-    @NotNull
-    public CompletableFuture<PardonResult> pardon(@NotNull UUID uuid, @NotNull Instant now) {
-        return profileCache.loadPlayerOffline(uuid).thenApply(opt -> {
-            if (opt.isEmpty()) {
-                return PardonResult.notFound();
-            }
-            LifeProfile profile = opt.get();
-            if (!profile.isBanned(now)) {
-                return PardonResult.notBanned(profile);
-            }
-
-            profile.setLives(1);
-            profile.setBannedUntil(null);
-            profile.resetOnlineSeconds();
-            profile.setGiftRegenActive(false);
-
-            if (deadTabService != null) {
-                deadTabService.removeDead(uuid);
-            }
-
-            pendingPardonNotifications.add(uuid);
-            profileCache.markDirty(uuid);
-            profileCache.saveProfileImmediately(profile);
-            notificationService.updateDisplayNameAndTab(uuid, 1);
-
-            return PardonResult.success(profile);
+            // A quick rejoin marks the profile dirty again, so evictIfClean keeps it in that case.
+            profileCache.saveProfileImmediately(profile).thenRun(() -> profileCache.evictIfClean(uuid));
         });
     }
 
     /**
-     * Pardons a player by username, resolving their UUID asynchronously (including offline players).
-     *
-     * @param playerName player username to pardon
-     * @return CompletableFuture completing with PardonResult
+     * Advances one online player by one second of regeneration. The position feeds AFK detection,
+     * so a player who never moves after joining still becomes AFK.
      */
-    @NotNull
-    public CompletableFuture<PardonResult> pardonByName(@NotNull String playerName) {
-        return pardonByName(playerName, Instant.now());
-    }
-
-    /**
-     * Pardons a player by username at the given timestamp.
-     *
-     * @param playerName player username to pardon
-     * @param now        current timestamp
-     * @return CompletableFuture completing with PardonResult
-     */
-    @NotNull
-    public CompletableFuture<PardonResult> pardonByName(@NotNull String playerName, @NotNull Instant now) {
-        return profileCache.findUuidByLastName(playerName).thenCompose(optUuid -> {
-            if (optUuid.isEmpty()) {
-                return CompletableFuture.completedFuture(PardonResult.notFound());
-            }
-            return pardon(optUuid.get(), now);
-        });
-    }
-
-    public enum ResetStatus {
-        SUCCESS,
-        NOT_FOUND
-    }
-
-    public record ResetResult(
-            @NotNull ResetStatus status,
-            @Nullable LifeProfile profile
-    ) {
-        public static ResetResult success(@NotNull LifeProfile profile) {
-            return new ResetResult(ResetStatus.SUCCESS, profile);
-        }
-
-        public static ResetResult notFound() {
-            return new ResetResult(ResetStatus.NOT_FOUND, null);
-        }
-    }
-
-    /**
-     * Resets a player's lives to the maximum configured lives using current active configuration.
-     *
-     * @param uuid player UUID
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> reset(@NotNull UUID uuid) {
-        return reset(uuid, configSupplier.get(), Instant.now());
-    }
-
-    /**
-     * Resets a player's lives to the maximum configured lives using the provided configuration.
-     *
-     * @param uuid   player UUID
-     * @param config active configuration
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> reset(@NotNull UUID uuid, @NotNull LifeConfig config) {
-        return reset(uuid, config, Instant.now());
-    }
-
-    /**
-     * Resets a player's lives to the maximum configured lives.
-     * If the player was banned, the ban is cleared.
-     * Resets onlineSeconds and deactivates giftRegenActive.
-     * Works for both online and offline players.
-     *
-     * @param uuid   player UUID
-     * @param config active configuration
-     * @param now    current instant
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> reset(
+    public void tickOnlinePlayer(
             @NotNull UUID uuid,
-            @NotNull LifeConfig config,
-            @NotNull Instant now
-    ) {
-        return profileCache.loadPlayerOffline(uuid).thenApply(opt -> {
-            if (opt.isEmpty()) {
-                return ResetResult.notFound();
-            }
-            LifeProfile profile = opt.get();
-            int maxLives = config.getMaxLives();
-            profile.setLives(maxLives);
-            profile.setBannedUntil(null);
-            profile.resetOnlineSeconds();
-            profile.setGiftRegenActive(false);
-
-            if (deadTabService != null) {
-                deadTabService.removeDead(uuid);
-            }
-
-            profileCache.markDirty(uuid);
-            profileCache.saveProfileImmediately(profile);
-            notificationService.updateDisplayNameAndTab(uuid, maxLives);
-
-            // If player is currently online, send notification message
-            notificationService.sendMessage(
-                    uuid,
-                    config.formatMessage(
-                            "admin.reset-player-notify",
-                            Map.of(
-                                    "lives", String.valueOf(maxLives),
-                                    "max", String.valueOf(maxLives)
-                            )
-                    )
-            );
-
-            return ResetResult.success(profile);
-        });
-    }
-
-    /**
-     * Resets a player's lives by username, resolving their UUID asynchronously (including offline players).
-     *
-     * @param playerName player username to reset
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> resetByName(@NotNull String playerName) {
-        return resetByName(playerName, configSupplier.get(), Instant.now());
-    }
-
-    /**
-     * Resets a player's lives by username with specific configuration.
-     *
-     * @param playerName player username to reset
-     * @param config     active configuration
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> resetByName(@NotNull String playerName, @NotNull LifeConfig config) {
-        return resetByName(playerName, config, Instant.now());
-    }
-
-    /**
-     * Resets a player's lives by username with specific configuration and timestamp.
-     *
-     * @param playerName player username to reset
-     * @param config     active configuration
-     * @param now        current timestamp
-     * @return CompletableFuture completing with ResetResult
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> resetByName(@NotNull String playerName, @NotNull LifeConfig config, @NotNull Instant now) {
-        return profileCache.findUuidByLastName(playerName).thenCompose(optUuid -> {
-            if (optUuid.isEmpty()) {
-                return CompletableFuture.completedFuture(ResetResult.notFound());
-            }
-            return reset(optUuid.get(), config, now);
-        });
-    }
-
-    /**
-     * Alias for {@link #reset(UUID, LifeConfig, Instant)} for backward compatibility.
-     */
-    @NotNull
-    public CompletableFuture<ResetResult> resetPlayer(
-            @NotNull UUID uuid,
-            @NotNull LifeConfig config,
-            @NotNull Instant now
-    ) {
-        return reset(uuid, config, now);
-    }
-
-    /**
-     * Admin command to forcefully set a player's lives.
-     *
-     * @param uuid   target player UUID
-     * @param lives  new life count (1..maxLives)
-     * @param config active configuration
-     * @return CompletableFuture completing when applied
-     */
-    public CompletableFuture<Void> adminSetLives(
-            @NotNull UUID uuid,
-            int lives,
+            @NotNull String world,
+            double x, double y, double z,
+            @NotNull Instant now,
             @NotNull LifeConfig config
     ) {
-        int targetLives = Math.max(1, Math.min(config.getMaxLives(), lives));
-        return profileCache.getOrLoadProfile(uuid, config.getMaxLives(), Instant.now()).thenAccept(profile -> {
-            int oldLives = profile.getLives();
-            profile.setLives(targetLives);
-            profile.setBannedUntil(null);
-
-            // If lives increased and gift regen was active, turn it off
-            if (targetLives > oldLives && profile.isGiftRegenActive()) {
-                profile.setGiftRegenActive(false);
-                profile.resetOnlineSeconds();
+        regenerationService.updatePlayerPosition(uuid, world, x, y, z, now);
+        profileCache.getCachedProfile(uuid).ifPresent(profile -> {
+            RegenerationService.TickResult result = regenerationService.tickPlayer(uuid, profile, 1L, now, config);
+            if (result.lifeGained()) {
+                profileCache.markDirty(uuid);
+                notificationService.updateDisplayNameAndTab(uuid, result.newLives());
+                notificationService.sendMessage(
+                        uuid,
+                        config.formatMessage("regen.life-gained", "lives", String.valueOf(result.newLives()))
+                );
             }
-
-            profileCache.markDirty(uuid);
-            notificationService.updateDisplayNameAndTab(uuid, targetLives);
         });
     }
 
-    public boolean hasPendingPardonNotification(@NotNull UUID uuid) {
-        return pendingPardonNotifications.contains(uuid);
-    }
-
-    public void addPendingPardonNotification(@NotNull UUID uuid) {
-        pendingPardonNotifications.add(uuid);
+    /**
+     * Server-wide part of the one-second tick, run after all online players were ticked.
+     */
+    public void tickServer(@NotNull Instant now) {
+        if (deadTabService != null) {
+            deadTabService.tick(now);
+        }
+        pruneExpired(now);
     }
 
     /**

@@ -31,6 +31,7 @@ public final class LifeProfile {
     private final AtomicReference<Instant> lastSeen;
     private final AtomicBoolean giftRegenActive;
     private final AtomicReference<String> lastName;
+    private final AtomicBoolean pardonNoticePending = new AtomicBoolean(false);
 
     /**
      * Constructs a new LifeProfile.
@@ -199,15 +200,6 @@ public final class LifeProfile {
     }
 
     /**
-     * Checks whether the player is currently on their last life ("red" player).
-     *
-     * @return true if player has exactly 1 life
-     */
-    public boolean isRed() {
-        return lives.get() == 1;
-    }
-
-    /**
      * Checks whether the player has 0 lives (dead/banned).
      *
      * @return true if lives <= 0
@@ -217,12 +209,23 @@ public final class LifeProfile {
     }
 
     /**
+     * Whether the player was pardoned while offline and has not been told yet.
+     */
+    public boolean isPardonNoticePending() {
+        return pardonNoticePending.get();
+    }
+
+    public void setPardonNoticePending(boolean pending) {
+        pardonNoticePending.set(pending);
+    }
+
+    /**
      * Creates an independent immutable snapshot copy of this profile.
      *
      * @return new LifeProfile snapshot
      */
-    public LifeProfile snapshot() {
-        return new LifeProfile(
+    public synchronized LifeProfile snapshot() {
+        LifeProfile copy = new LifeProfile(
                 uuid,
                 lives.get(),
                 onlineSecondsSinceLastLoss.get(),
@@ -231,6 +234,8 @@ public final class LifeProfile {
                 giftRegenActive.get(),
                 lastName.get()
         );
+        copy.setPardonNoticePending(pardonNoticePending.get());
+        return copy;
     }
 
     @Override

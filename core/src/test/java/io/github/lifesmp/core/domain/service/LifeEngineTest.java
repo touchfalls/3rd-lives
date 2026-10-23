@@ -342,4 +342,17 @@ class LifeEngineTest {
         assertThat(dbStore.get(donor).getLives()).isEqualTo(2);
         assertThat(dbStore.get(recipient).getLives()).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("A death still costs a life when the profile is not in memory (for example after a plugin reload)")
+    void deathLoadsProfileWhenNotCached() {
+        UUID uuid = UUID.randomUUID();
+        dbStore.put(uuid, new LifeProfile(uuid, 3, 0L, null, now, false));
+
+        LifeEngine.DeathResult result = lifeEngine.handlePlayerDeath(uuid, "world", 0, 64, 0, null, now, config);
+
+        assertThat(result.lifeLost()).isTrue();
+        assertThat(result.remainingLives()).isEqualTo(2);
+        assertThat(dbStore.get(uuid).getLives()).isEqualTo(2);
+    }
 }

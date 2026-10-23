@@ -23,7 +23,10 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -36,6 +39,12 @@ import java.util.function.Supplier;
  * main thread via {@link MinecraftServer#execute(Runnable)}.
  */
 public final class FabricTabPresenter implements TabPresenter {
+
+    /**
+     * Vanilla broadcasts a remove packet for the UUID of a player who disconnects. A banned player's
+     * fake TAB entry uses the same UUID, so it is shown only after this grace period.
+     */
+    private static final long QUIT_GRACE_MS = 250L;
 
     private static final sun.misc.Unsafe UNSAFE;
     private static final long ENTRIES_FIELD_OFFSET;
@@ -67,6 +76,7 @@ public final class FabricTabPresenter implements TabPresenter {
     private final BiConsumer<UUID, Packet<?>> playerPacketSender;
 
     private final Map<UUID, String> deadPlayerNames = new ConcurrentHashMap<>();
+    private final Executor afterQuitExecutor;
 
     public FabricTabPresenter(
             @NotNull Supplier<MinecraftServer> serverSupplier,
@@ -95,6 +105,15 @@ public final class FabricTabPresenter implements TabPresenter {
                             player.connection.send(packet);
                         }
                     }
+                },
+                task -> {
+                    MinecraftServer server = serverSupplier.get();
+                    if (server == null) {
+                        task.run();
+                    } else {
+                        CompletableFuture.runAsync(task,
+                                CompletableFuture.delayedExecutor(QUIT_GRACE_MS, TimeUnit.MILLISECONDS, server));
+                    }
                 }
         );
     }
@@ -106,6 +125,18 @@ public final class FabricTabPresenter implements TabPresenter {
             @NotNull Consumer<Packet<?>> packetBroadcaster,
             @NotNull BiConsumer<UUID, Packet<?>> playerPacketSender
     ) {
+        this(serverSupplier, configSupplier, scoreboardManager, packetBroadcaster, playerPacketSender, Runnable::run);
+    }
+
+    public FabricTabPresenter(
+            @NotNull Supplier<MinecraftServer> serverSupplier,
+            @NotNull Supplier<LifeConfig> configSupplier,
+            @NotNull FabricScoreboardManager scoreboardManager,
+            @NotNull Consumer<Packet<?>> packetBroadcaster,
+            @NotNull BiConsumer<UUID, Packet<?>> playerPacketSender,
+            @NotNull Executor afterQuitExecutor
+    ) {
+        this.afterQuitExecutor = Objects.requireNonNull(afterQuitExecutor, "afterQuitExecutor cannot be null");
         this.serverSupplier = Objects.requireNonNull(serverSupplier, "serverSupplier cannot be null");
         this.configSupplier = Objects.requireNonNull(configSupplier, "configSupplier cannot be null");
         this.scoreboardManager = Objects.requireNonNull(scoreboardManager, "scoreboardManager cannot be null");
@@ -118,7 +149,7 @@ public final class FabricTabPresenter implements TabPresenter {
         Objects.requireNonNull(entry, "entry cannot be null");
         deadPlayerNames.put(entry.uuid(), entry.name());
 
-        dispatchToMain(() -> {
+        afterQuit(entry.uuid(), () -> {
             LifeConfig config = configSupplier.get();
             if (!config.isDeadTabEnabled()) {
                 return;
@@ -284,6 +315,15 @@ public final class FabricTabPresenter implements TabPresenter {
         }
 
         return FabricMessageFormatter.parse(formatted);
+    }
+
+    private void afterQuit(UUID uuid, Runnable task) {
+        afterQuitExecutor.execute(() -> {
+            // hideDead may have run during the grace period (pardon, reset, expiry)
+            if (deadPlayerNames.containsKey(uuid)) {
+                dispatchToMain(task);
+            }
+        });
     }
 
     private void dispatchToMain(Runnable task) {

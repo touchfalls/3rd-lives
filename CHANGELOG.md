@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- The gray `[DEAD]` TAB entry of a banned player no longer disappears for players who are online. When a player disconnects, the game removes the TAB entry with the same UUID for everyone, which also removed the fake dead entry. The entry is now shown 5 ticks (250 ms) after the kick, and only if the player is still dead then.
+- Switching `dead-tab.enabled` on with `/life reload` now shows the dead entries to players who are already online.
+- A death still costs a life when the player's data is not in memory (for example after a plugin reload). The previous release skipped such a death.
+- `/life set`, `/life pardon` and `/life reset` on Paper no longer change the scoreboard from the database thread, and Fabric no longer sends the name update twice.
+
 ## [1.0.1] - 2026-10-23
 
 ### Fixed

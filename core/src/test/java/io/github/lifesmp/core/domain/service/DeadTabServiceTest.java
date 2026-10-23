@@ -228,7 +228,39 @@ class DeadTabServiceTest {
         assertEquals(2, deadTabService.getDeadCount());
         assertTrue(deadTabService.getDeadEntry(u1).isPresent());
         assertTrue(deadTabService.getDeadEntry(u2).isPresent());
-        assertEquals(1, tabPresenter.refreshCalls.get());
+        assertTrue(tabPresenter.shownDead.containsKey(u1));
+        assertTrue(tabPresenter.shownDead.containsKey(u2));
+    }
+
+    @Test
+    @DisplayName("Setting lives of a banned player removes the dead TAB entry")
+    void setLivesRemovesDeadEntry() {
+        LifeProfileCache profileCache = new LifeProfileCache(playerRepository);
+        ArenaRepository arenaRepository = mock(ArenaRepository.class);
+        when(arenaRepository.loadAllArenas()).thenReturn(CompletableFuture.completedFuture(Collections.emptyList()));
+        LifeEngine lifeEngine = new LifeEngine(
+                profileCache,
+                new ArenaService(arenaRepository),
+                new PvPPolicyEngine(),
+                new RegenerationService(),
+                new GiftService(mock(EconomyIntegration.class)),
+                mock(NotificationService.class),
+                () -> config
+        );
+        lifeEngine.setDeadTabService(deadTabService);
+
+        UUID uuid = UUID.randomUUID();
+        Instant now = Instant.now();
+        LifeProfile profile = profileCache.getOrLoadProfile(uuid, 1, now).join();
+        lifeEngine.handlePlayerDeath(uuid, "SetUser", "world", 0, 64, 0, null, now, config);
+        assertTrue(deadTabService.getDeadEntry(uuid).isPresent());
+
+        lifeEngine.getAdminService().setLives(uuid, 2, config).join();
+
+        assertFalse(deadTabService.getDeadEntry(uuid).isPresent());
+        assertTrue(tabPresenter.hiddenDead.contains(uuid));
+        assertEquals(2, profile.getLives());
+        assertNull(profile.getBannedUntil());
     }
 
     @Test

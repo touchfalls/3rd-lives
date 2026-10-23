@@ -303,13 +303,12 @@ public final class LifeEngine {
             return new DeathResult(false, false, currentLives, true);
         }
 
-        Optional<LifeProfile> loaded = profileCache.getCachedProfile(victimUuid);
-        if (loaded.isEmpty()) {
-            // Online players are cached on join; loading here would block the server thread on the database.
-            LOGGER.warn("Ignoring death of {}: profile is not loaded", victimUuid);
-            return new DeathResult(false, false, 0, false);
-        }
-        LifeProfile profile = loaded.get();
+        // Online players are cached on join. The cache is empty after a plugin reload or a quick rejoin,
+        // and skipping the death would be a free life, so load the profile as a rare fallback.
+        LifeProfile profile = profileCache.getCachedProfile(victimUuid).orElseGet(() -> {
+            LOGGER.warn("Profile of {} was not in memory at death; loading it from the database", victimUuid);
+            return profileCache.getOrLoadProfile(victimUuid, config.getMaxLives(), now).join();
+        });
 
         int remainingLives;
         Instant bannedUntil = null;

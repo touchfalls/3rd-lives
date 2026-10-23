@@ -507,10 +507,6 @@ public final class PaperCommandRegistrar {
                         Placeholder.unparsed("player", targetName),
                         Placeholder.unparsed("lives", String.valueOf(lives))
                 ));
-                Player onlinePlayer = Bukkit.getPlayer(targetUuid);
-                if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                    plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, lives);
-                }
             });
         });
         return 1;
@@ -540,10 +536,6 @@ public final class PaperCommandRegistrar {
                                 Placeholder.unparsed("player", targetName),
                                 Placeholder.unparsed("lives", "1")
                         ));
-                        Player onlinePlayer = Bukkit.getPlayer(targetUuid);
-                        if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                            plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, 1);
-                        }
                     }
                     case NOT_BANNED -> sender.sendMessage(render(
                             config,
@@ -580,10 +572,6 @@ public final class PaperCommandRegistrar {
                             Placeholder.unparsed("lives", String.valueOf(config.getMaxLives())),
                             Placeholder.unparsed("max", String.valueOf(config.getMaxLives()))
                     ));
-                    Player onlinePlayer = Bukkit.getPlayer(targetUuid);
-                    if (onlinePlayer != null && onlinePlayer.isOnline()) {
-                        plugin.getScoreboardManager().updatePlayerVisuals(onlinePlayer, config.getMaxLives());
-                    }
                 } else {
                     sender.sendMessage(render(
                             config,

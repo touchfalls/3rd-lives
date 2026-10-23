@@ -34,6 +34,12 @@ import java.util.function.Supplier;
  */
 public final class PaperTabPresenter implements TabPresenter {
 
+    /**
+     * Vanilla broadcasts a remove packet for the UUID of a player who disconnects. A banned player's
+     * fake TAB entry uses the same UUID, so it is shown only after this grace period.
+     */
+    private static final long QUIT_GRACE_TICKS = 5L;
+
     private final Plugin plugin;
     private final Supplier<LifeConfig> configSupplier;
     private final PaperScoreboardManager scoreboardManager;
@@ -56,7 +62,7 @@ public final class PaperTabPresenter implements TabPresenter {
         Objects.requireNonNull(entry, "entry cannot be null");
         deadPlayerNames.put(entry.uuid(), entry.name());
 
-        dispatchToMain(() -> {
+        afterQuit(entry.uuid(), () -> {
             LifeConfig config = configSupplier.get();
             if (!config.isDeadTabEnabled()) {
                 return;
@@ -223,6 +229,15 @@ public final class PaperTabPresenter implements TabPresenter {
 
         net.kyori.adventure.text.Component adventureComponent = MiniMessage.miniMessage().deserialize(formatted);
         return PaperAdventure.asVanilla(adventureComponent);
+    }
+
+    private void afterQuit(UUID uuid, Runnable task) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // hideDead may have run during the grace period (pardon, reset, expiry)
+            if (deadPlayerNames.containsKey(uuid)) {
+                task.run();
+            }
+        }, QUIT_GRACE_TICKS);
     }
 
     private void dispatchToMain(Runnable task) {

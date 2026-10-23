@@ -317,7 +317,6 @@ public final class FabricCommandRegistrar<S> {
                                 "admin.pardon-success",
                                 Map.of("player", targetName, "lives", "1")
                         ));
-                        server.getBridge().updateVisuals(targetUuid, 1);
                     }
                     case NOT_BANNED -> adapter.sendFeedback(source, config.formatMessage(
                             "admin.pardon-not-banned", "player", targetName));
@@ -347,7 +346,6 @@ public final class FabricCommandRegistrar<S> {
                                     "max", String.valueOf(config.getMaxLives())
                             )
                     ));
-                    server.getBridge().updateVisuals(targetUuid, config.getMaxLives());
                 } else {
                     adapter.sendFeedback(source, config.formatMessage(
                             "admin.reset-player-not-found", "player", targetName));

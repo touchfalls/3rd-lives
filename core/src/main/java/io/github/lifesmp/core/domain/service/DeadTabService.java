@@ -74,8 +74,10 @@ public final class DeadTabService {
                 deadEntries.put(entry.uuid(), entry);
             }
 
-            if (!deadEntries.isEmpty()) {
-                tabPresenter.refreshAll(deadEntries.values());
+            // refreshAll only renames entries clients already have; online players need the entries added
+            // (this runs at startup and again when dead-tab is switched on by /life reload).
+            for (DeadEntry entry : deadEntries.values()) {
+                tabPresenter.showDead(entry);
             }
             LOGGER.info("Loaded {} active dead TAB entries into cache from database", deadEntries.size());
         });

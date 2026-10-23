@@ -166,4 +166,31 @@ class FabricTabPresenterTest {
         assertThat(broadcastedPackets).isEmpty();
         verify(scoreboardManager, never()).addToDeadTeam(any());
     }
+
+    @Test
+    @DisplayName("showDead waits for the grace period and is skipped when the entry was hidden meanwhile")
+    void showDeadIsDeferredAndGuarded() {
+        List<Runnable> deferred = new ArrayList<>();
+        FabricTabPresenter deferring = new FabricTabPresenter(
+                () -> server, () -> config, scoreboardManager,
+                broadcastedPackets::add,
+                (uuid, packet) -> sentToPlayerPackets.add(new SinglePacketDelivery(uuid, packet)),
+                deferred::add
+        );
+
+        DeadEntry stillDead = new DeadEntry(UUID.randomUUID(), "StillDead", Instant.now().plusSeconds(3600));
+        DeadEntry pardoned = new DeadEntry(UUID.randomUUID(), "Pardoned", Instant.now().plusSeconds(3600));
+        deferring.showDead(stillDead);
+        deferring.showDead(pardoned);
+        deferring.hideDead(pardoned.uuid());
+        int packetsBeforeGracePeriod = broadcastedPackets.size();
+
+        deferred.forEach(Runnable::run);
+
+        assertThat(deferred).hasSize(2);
+        // the remove packet of hideDead, then only the entry that is still dead
+        assertThat(packetsBeforeGracePeriod).isEqualTo(1);
+        assertThat(broadcastedPackets).hasSize(2);
+        assertThat(broadcastedPackets.get(1)).isInstanceOf(net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket.class);
+    }
 }

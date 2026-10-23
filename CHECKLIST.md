@@ -59,16 +59,33 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
   - **Where:** `io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager`.
   - **Verification:** Verified by `FabricScoreboardManagerTest` and `FabricTabPresenterTest`.
 
+- [ ] **`sun.misc.Unsafe` fallback in `FabricTabPresenter`**
+  - **What:** When `ClientboundPlayerInfoUpdatePacket` does not implement `ClientboundPlayerInfoUpdatePacketAccessor` (the mixin is not applied, for example in plain unit tests), the `entries` field is written through `Unsafe.objectFieldOffset` / `Unsafe.putObject`. `objectFieldOffset` is deprecated for removal and produces a compiler warning on JDK 21.
+  - **Where:** `io.github.lifesmp.fabric.platform.FabricTabPresenter` (static initializer and `setEntries`).
+  - **Risk:** On a running server the mixin accessor is used, so the fallback is not expected to run. A future JDK may remove or restrict the method; the static initializer catches the failure and the fallback is then disabled.
+  - **Verification:** Start a Fabric server, ban a player and confirm the gray `[DEAD]` entry appears in TAB (accessor path). Before moving to a newer JDK, run `./gradlew :fabric:test` and check that `FabricTabPresenterTest` still passes, or replace the fallback with a test-only mixin environment.
+
 ---
 
-## 4. Verification Commands
+## 4. Localization
+
+- [x] **Message bundles**
+  - **What:** `core/src/main/resources/lifesmp/lang/{en,ru,fr,it,es}.properties`, loaded by `MessageBundle` with English as fallback for missing keys.
+  - **Verification:** `MessageBundleTest` checks that every bundle has exactly the keys of `en.properties`; `verifyJars` checks that all five files are present in both jars.
+- [ ] **Translations reviewed by native speakers**
+  - **What:** French, Italian and Spanish texts have not yet been reviewed by native speakers.
+  - **Verification:** Set `language` to each value, run `/life`, `/life help`, a gift, a death and a ban, and read the output in game.
+
+---
+
+## 5. Verification Commands
 
 Run the full verification suite on a clean environment:
 ```bash
 ./gradlew clean dist test verifyJars
 ```
 Expected output:
-- All unit and integration tests pass (75/75).
+- All unit and integration tests pass (84/84).
 - Both artifacts assembled and verified:
   - `dist/paper/lifesmp-1.0.0.jar`
   - `dist/fabric/lifesmp-fabric-1.0.0.jar`

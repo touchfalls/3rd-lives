@@ -126,10 +126,13 @@ public final class RegenerationService {
      *
      * @param uuid                player UUID
      * @param nowEpochMillis      current instant in epoch milliseconds
-     * @param afkThresholdSeconds threshold in seconds before being considered AFK
+     * @param afkThresholdSeconds threshold in seconds before being considered AFK; negative disables AFK detection
      * @return true if player is AFK
      */
     public boolean isAfk(@NotNull UUID uuid, long nowEpochMillis, long afkThresholdSeconds) {
+        if (afkThresholdSeconds < 0) {
+            return false;
+        }
         PlayerAfkTracker tracker = afkTrackers.get(uuid);
         if (tracker == null) {
             return false;

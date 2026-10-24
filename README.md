@@ -56,7 +56,7 @@ Outside arenas and outside a global PvP event:
 ### Regeneration
 
 - A player with fewer than `max-lives` lives gains one life after `regen-hours-per-life` hours online (default 10).
-- Time only counts while the player is online and not AFK. A player is AFK after `afk-minutes` minutes (default 180) without moving.
+- Time only counts while the player is online and not AFK. A player is AFK after `afk-minutes` minutes (default 180) without moving. Set `afk-minutes` to `-1` to turn AFK detection off.
 - After a life is restored, the timer starts again from zero.
 - Players at `max-lives` do not accumulate time.
 - `/life` shows the current lives, time to the next life, the regeneration mode and the AFK state.
@@ -168,7 +168,7 @@ The file is created with default values on first start. Both files use the same 
 | `restored-lives-after-ban` | `3` | Lives given on the first login after a ban ends |
 | `regen-hours-per-life` | `10.0` | Online hours needed to regenerate one life |
 | `gift-regen-hours-per-life` | `2.5` | Online hours per life for a donor after a gift |
-| `afk-minutes` | `180.0` | Minutes without movement after which regeneration pauses |
+| `afk-minutes` | `180.0` | Minutes without movement after which regeneration pauses; `-1` turns AFK detection off |
 | `retaliation-window-seconds` | `30` | How long a victim may hit back a red attacker |
 | `gift-request-timeout-seconds` | `60` | How long a gift request stays valid |
 | `autosave-minutes` | `5.0` | Interval for saving changed player data to the database (minimum 1 minute) |

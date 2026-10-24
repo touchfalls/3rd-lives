@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-25
+
 ### Added
+- `afk-minutes: -1` turns AFK detection off: the regeneration timer then also runs for players who stand still.
 - Minecraft 26.2 support. The Paper jar runs on both Paper 1.21.1 and Paper 26.2. Fabric has a separate jar for 26.2 (`lifesmp-fabric-26.2-<version>.jar`, needs Java 25 and Fabric Loader 0.18.4 or newer).
 
 ### Fixed

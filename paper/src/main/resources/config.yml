@@ -21,7 +21,8 @@ regen-hours-per-life: 10.0
 # Accelerated online hours required to regenerate 1 life for a donor after gifting
 gift-regen-hours-per-life: 2.5
 
-# Inactivity duration in minutes before a player is considered AFK (pauses regen timer)
+# Inactivity duration in minutes before a player is considered AFK (pauses regen timer).
+# Set to -1 to turn AFK detection off.
 afk-minutes: 180.0
 
 # Time window in seconds during which a victim can retaliate against a red attacker

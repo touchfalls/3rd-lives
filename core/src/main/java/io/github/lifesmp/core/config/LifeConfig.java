@@ -168,7 +168,8 @@ public final class LifeConfig {
         this.restoredLivesAfterBan = Math.max(1, restoredLivesAfterBan);
         this.regenHoursPerLife = Math.max(0.001, regenHoursPerLife);
         this.giftRegenHoursPerLife = Math.max(0.001, giftRegenHoursPerLife);
-        this.afkMinutes = Math.max(0.1, afkMinutes);
+        // any negative value (-1) turns AFK detection off
+        this.afkMinutes = afkMinutes < 0 ? -1.0 : Math.max(0.1, afkMinutes);
         this.retaliationWindowSeconds = Math.max(1L, retaliationWindowSeconds);
         this.giftRequestTimeoutSeconds = Math.max(1L, giftRequestTimeoutSeconds);
         this.autosaveMinutes = Math.max(0.1, autosaveMinutes);
@@ -266,8 +267,9 @@ public final class LifeConfig {
         return afkMinutes;
     }
 
+    /** AFK threshold in seconds, or -1 when AFK detection is disabled. */
     public long getAfkSeconds() {
-        return Math.round(afkMinutes * 60.0);
+        return afkMinutes < 0 ? -1L : Math.round(afkMinutes * 60.0);
     }
 
     public long getRetaliationWindowSeconds() {

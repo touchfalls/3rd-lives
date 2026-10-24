@@ -113,6 +113,34 @@ class RegenerationServiceTest {
     }
 
     @Test
+    @DisplayName("afk-minutes -1 turns AFK detection off, so an idle player keeps regenerating")
+    void negativeAfkMinutesDisablesAfk() {
+        LifeConfig noAfk = new LifeConfig(
+                config.getMaxLives(),
+                config.getBanHours(),
+                config.getRestoredLivesAfterBan(),
+                config.getRegenHoursPerLife(),
+                config.getGiftRegenHoursPerLife(),
+                -1.0,
+                config.getRetaliationWindowSeconds(),
+                config.getGiftRequestTimeoutSeconds(),
+                config.getAutosaveMinutes(),
+                config.getLifeColors(),
+                config.getMessages()
+        );
+        assertThat(noAfk.getAfkSeconds()).isEqualTo(-1L);
+
+        LifeProfile profile = new LifeProfile(playerUuid, 2, 500L, null, now, false);
+        regenerationService.updatePlayerPosition(playerUuid, "world", 0.0, 64.0, 0.0, now);
+
+        Instant later = now.plusSeconds(24 * 3600L); // a full day without moving
+        assertThat(regenerationService.isAfk(playerUuid, later, noAfk.getAfkSeconds())).isFalse();
+
+        regenerationService.tickPlayer(playerUuid, profile, 60L, later, noAfk);
+        assertThat(profile.getOnlineSecondsSinceLastLoss()).isEqualTo(560L);
+    }
+
+    @Test
     @DisplayName("Proportional progress recalculation preserves exact completion ratio on config reload")
     void proportionalRecalculationOnConfigReload() {
         LifeProfile profile = new LifeProfile(playerUuid, 2, 18000L, null, now, false); // 18,000s out of 36,000s = 50%

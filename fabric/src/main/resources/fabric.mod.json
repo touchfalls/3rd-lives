@@ -21,9 +21,9 @@
     "lifesmp.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.0",
+    "fabricloader": ">=${loader}",
     "fabric-api": "*",
-    "minecraft": "~1.21.1",
-    "java": ">=21"
+    "minecraft": "${minecraft}",
+    "java": ">=${java}"
   }
 }

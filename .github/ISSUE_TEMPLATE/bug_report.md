@@ -11,9 +11,9 @@ A clear and concise description of what the bug is.
 
 ### Environment
 - **Platform:** Paper / Fabric
-- **Minecraft Version:** 1.21.1
+- **Minecraft Version:** 1.21.1 / 26.2
 - **Plugin/Mod Version:** 1.0.2
-- **Java Version:** 21 (e.g. Temurin 21.0.2)
+- **Java Version:** (e.g. Temurin 21.0.2 or 25.0.1)
 - **Other Plugins / Mods installed:** (List relevant combat/tab/scoreboard plugins if applicable)
 
 ### Steps to Reproduce

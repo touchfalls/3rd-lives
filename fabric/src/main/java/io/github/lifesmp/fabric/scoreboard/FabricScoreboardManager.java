@@ -4,7 +4,7 @@
 package io.github.lifesmp.fabric.scoreboard;
 
 import io.github.lifesmp.core.domain.model.PlayerColor;
-import net.minecraft.ChatFormatting;
+import io.github.lifesmp.fabric.util.McCompat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerScoreboard;
@@ -84,7 +84,7 @@ public final class FabricScoreboardManager {
         PlayerTeam team = scoreboard.getPlayerTeam(TEAM_DEAD);
         if (team == null) {
             team = scoreboard.addPlayerTeam(TEAM_DEAD);
-            team.setColor(ChatFormatting.GRAY);
+            McCompat.setGray(team);
             team.setDisplayName(Component.literal("Dead Players"));
         }
         scoreboard.addPlayerToTeam(playerName, team);

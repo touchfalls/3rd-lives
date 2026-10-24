@@ -6,6 +6,7 @@ package io.github.lifesmp.fabric.platform;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.DeadEntry;
 import io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager;
+import io.github.lifesmp.fabric.util.McCompat;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
@@ -67,7 +68,7 @@ class FabricTabPresenterTest {
         ClientboundPlayerInfoUpdatePacket updatePacket = (ClientboundPlayerInfoUpdatePacket) sent;
         assertThat(updatePacket.entries()).hasSize(1);
         assertThat(updatePacket.entries().get(0).profileId()).isEqualTo(deadUuid);
-        assertThat(updatePacket.entries().get(0).profile().getName()).isEqualTo("DeadPlayer");
+        assertThat(McCompat.name(updatePacket.entries().get(0).profile())).isEqualTo("DeadPlayer");
         assertThat(updatePacket.entries().get(0).listed()).isTrue();
     }
 
@@ -110,8 +111,8 @@ class FabricTabPresenterTest {
         assertThat(sent).isInstanceOf(ClientboundPlayerInfoUpdatePacket.class);
         ClientboundPlayerInfoUpdatePacket packet = (ClientboundPlayerInfoUpdatePacket) sent;
         assertThat(packet.entries()).hasSize(2);
-        assertThat(packet.entries().get(0).profile().getName()).isEqualTo("Dead1");
-        assertThat(packet.entries().get(1).profile().getName()).isEqualTo("Dead2");
+        assertThat(McCompat.name(packet.entries().get(0).profile())).isEqualTo("Dead1");
+        assertThat(McCompat.name(packet.entries().get(1).profile())).isEqualTo("Dead2");
     }
 
     @Test

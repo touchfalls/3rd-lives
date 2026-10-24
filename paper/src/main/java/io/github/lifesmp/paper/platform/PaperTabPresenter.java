@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -39,6 +40,11 @@ public final class PaperTabPresenter implements TabPresenter {
      * fake TAB entry uses the same UUID, so it is shown only after this grace period.
      */
     private static final long QUIT_GRACE_TICKS = 10L;
+
+    /** Entry gained showHat and listOrder after 1.21.1, so it is built by parameter type to run on 1.21.1 and 26.x. */
+    private static final Constructor<?> ENTRY_CONSTRUCTOR = Arrays.stream(ClientboundPlayerInfoUpdatePacket.Entry.class.getConstructors())
+            .max(Comparator.comparingInt(Constructor::getParameterCount))
+            .orElseThrow();
 
     private final Plugin plugin;
     private final Supplier<LifeConfig> configSupplier;
@@ -75,15 +81,7 @@ public final class PaperTabPresenter implements TabPresenter {
             GameProfile profile = new GameProfile(entry.uuid(), entry.name());
             net.minecraft.network.chat.Component vanillaDisplayName = createDisplayName(entry, config);
 
-            ClientboundPlayerInfoUpdatePacket.Entry packetEntry = new ClientboundPlayerInfoUpdatePacket.Entry(
-                    entry.uuid(),
-                    profile,
-                    true,
-                    0,
-                    GameType.SURVIVAL,
-                    vanillaDisplayName,
-                    null
-            );
+            ClientboundPlayerInfoUpdatePacket.Entry packetEntry = tabEntry(entry.uuid(), profile, vanillaDisplayName);
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(
                     ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER,
@@ -147,15 +145,7 @@ public final class PaperTabPresenter implements TabPresenter {
                 GameProfile profile = new GameProfile(entry.uuid(), entry.name());
                 net.minecraft.network.chat.Component vanillaDisplayName = createDisplayName(entry, config);
 
-                packetEntries.add(new ClientboundPlayerInfoUpdatePacket.Entry(
-                        entry.uuid(),
-                        profile,
-                        true,
-                        0,
-                        GameType.SURVIVAL,
-                        vanillaDisplayName,
-                        null
-                ));
+                packetEntries.add(tabEntry(entry.uuid(), profile, vanillaDisplayName));
             }
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(
@@ -190,15 +180,7 @@ public final class PaperTabPresenter implements TabPresenter {
                 GameProfile profile = new GameProfile(entry.uuid(), entry.name());
                 net.minecraft.network.chat.Component vanillaDisplayName = createDisplayName(entry, config);
 
-                packetEntries.add(new ClientboundPlayerInfoUpdatePacket.Entry(
-                        entry.uuid(),
-                        profile,
-                        true,
-                        0,
-                        GameType.SURVIVAL,
-                        vanillaDisplayName,
-                        null
-                ));
+                packetEntries.add(tabEntry(entry.uuid(), profile, vanillaDisplayName));
             }
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(
@@ -210,6 +192,33 @@ public final class PaperTabPresenter implements TabPresenter {
                 ((CraftPlayer) player).getHandle().connection.send(packet);
             }
         });
+    }
+
+    /** A listed survival TAB entry with zero latency. */
+    static ClientboundPlayerInfoUpdatePacket.Entry tabEntry(UUID uuid, GameProfile profile, net.minecraft.network.chat.Component displayName) {
+        Class<?>[] types = ENTRY_CONSTRUCTOR.getParameterTypes();
+        Object[] args = new Object[types.length];
+        for (int i = 0; i < types.length; i++) {
+            Class<?> type = types[i];
+            if (type == UUID.class) {
+                args[i] = uuid;
+            } else if (type == GameProfile.class) {
+                args[i] = profile;
+            } else if (type == boolean.class) {
+                args[i] = true; // listed, showHat
+            } else if (type == int.class) {
+                args[i] = 0; // latency, listOrder
+            } else if (type == GameType.class) {
+                args[i] = GameType.SURVIVAL;
+            } else if (type == net.minecraft.network.chat.Component.class) {
+                args[i] = displayName;
+            } // the chat session stays null
+        }
+        try {
+            return (ClientboundPlayerInfoUpdatePacket.Entry) ENTRY_CONSTRUCTOR.newInstance(args);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot create a TAB entry on this server version", e);
+        }
     }
 
     private net.minecraft.network.chat.Component createDisplayName(DeadEntry entry, LifeConfig config) {

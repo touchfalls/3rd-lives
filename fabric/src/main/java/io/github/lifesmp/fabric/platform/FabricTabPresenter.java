@@ -10,13 +10,13 @@ import io.github.lifesmp.core.ports.TabPresenter;
 import io.github.lifesmp.fabric.mixin.ClientboundPlayerInfoUpdatePacketAccessor;
 import io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager;
 import io.github.lifesmp.fabric.util.FabricMessageFormatter;
+import io.github.lifesmp.fabric.util.McCompat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.GameType;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
@@ -162,15 +162,7 @@ public final class FabricTabPresenter implements TabPresenter {
             GameProfile profile = new GameProfile(entry.uuid(), entry.name());
             Component displayName = createDisplayName(entry, config);
 
-            ClientboundPlayerInfoUpdatePacket.Entry packetEntry = new ClientboundPlayerInfoUpdatePacket.Entry(
-                    entry.uuid(),
-                    profile,
-                    true,
-                    0,
-                    GameType.SURVIVAL,
-                    displayName,
-                    null
-            );
+            ClientboundPlayerInfoUpdatePacket.Entry packetEntry = McCompat.tabEntry(entry.uuid(), profile, displayName);
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(
                     ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER,
@@ -226,15 +218,7 @@ public final class FabricTabPresenter implements TabPresenter {
                 GameProfile profile = new GameProfile(entry.uuid(), entry.name());
                 Component displayName = createDisplayName(entry, config);
 
-                packetEntries.add(new ClientboundPlayerInfoUpdatePacket.Entry(
-                        entry.uuid(),
-                        profile,
-                        true,
-                        0,
-                        GameType.SURVIVAL,
-                        displayName,
-                        null
-                ));
+                packetEntries.add(McCompat.tabEntry(entry.uuid(), profile, displayName));
             }
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(
@@ -270,15 +254,7 @@ public final class FabricTabPresenter implements TabPresenter {
                 GameProfile profile = new GameProfile(entry.uuid(), entry.name());
                 Component displayName = createDisplayName(entry, config);
 
-                packetEntries.add(new ClientboundPlayerInfoUpdatePacket.Entry(
-                        entry.uuid(),
-                        profile,
-                        true,
-                        0,
-                        GameType.SURVIVAL,
-                        displayName,
-                        null
-                ));
+                packetEntries.add(McCompat.tabEntry(entry.uuid(), profile, displayName));
             }
 
             EnumSet<ClientboundPlayerInfoUpdatePacket.Action> actions = EnumSet.of(

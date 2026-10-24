@@ -17,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Fabric Loom needs Gradle to run on Java 25+; the sources are compiled with the Java 21 toolchain.
+      # Fabric Loom needs Gradle to run on Java 25+. 1.21.1 code is compiled with Java 21, Minecraft 26.x code with Java 25.
       # The last listed version becomes JAVA_HOME and runs Gradle.
       - name: Set up JDK 21 and 25
         uses: actions/setup-java@v5
@@ -51,9 +51,11 @@ jobs:
           mkdir -p release
           PAPER_JAR=$(find dist/paper -maxdepth 1 -name '*.jar' | head -n 1)
           FABRIC_JAR=$(find dist/fabric -maxdepth 1 -name '*.jar' | head -n 1)
-          test -n "$PAPER_JAR" && test -n "$FABRIC_JAR"
+          FABRIC_26_JAR=$(find dist/fabric-26 -maxdepth 1 -name '*.jar' | head -n 1)
+          test -n "$PAPER_JAR" && test -n "$FABRIC_JAR" && test -n "$FABRIC_26_JAR"
           cp "$PAPER_JAR" "release/lifesmp-paper-${VERSION}.jar"
-          cp "$FABRIC_JAR" "release/lifesmp-fabric-${VERSION}.jar"
+          cp "$FABRIC_JAR" "release/lifesmp-fabric-1.21.1-${VERSION}.jar"
+          cp "$FABRIC_26_JAR" "release/lifesmp-fabric-26.2-${VERSION}.jar"
           ls -l release
 
       - name: Create GitHub Release
@@ -63,5 +65,6 @@ jobs:
           body_path: docs/release-notes/${{ env.VERSION }}.md
           files: |
             release/lifesmp-paper-${{ env.VERSION }}.jar
-            release/lifesmp-fabric-${{ env.VERSION }}.jar
+            release/lifesmp-fabric-1.21.1-${{ env.VERSION }}.jar
+            release/lifesmp-fabric-26.2-${{ env.VERSION }}.jar
           fail_on_unmatched_files: true

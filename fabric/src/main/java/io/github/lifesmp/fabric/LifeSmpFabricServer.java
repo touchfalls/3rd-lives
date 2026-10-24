@@ -27,6 +27,7 @@ import io.github.lifesmp.fabric.platform.FabricServerBridge;
 import io.github.lifesmp.fabric.platform.FabricTabPresenter;
 import io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager;
 import io.github.lifesmp.fabric.util.FabricMessageFormatter;
+import io.github.lifesmp.fabric.util.McCompat;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -197,7 +198,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer player = handler.player;
             UUID uuid = player.getUUID();
-            String playerName = player.getGameProfile().getName();
+            String playerName = McCompat.name(player.getGameProfile());
             Instant now = Instant.now();
             LifeConfig config = this.lifeConfig;
 
@@ -243,7 +244,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
             Instant now = Instant.now();
             LifeConfig config = this.lifeConfig;
-            String worldName = victim.level().dimension().location().toString();
+            String worldName = McCompat.dimensionId(victim.level());
 
             boolean inActiveArena = arenaService.isInsideActiveArena(
                     worldName, victim.getX(), victim.getY(), victim.getZ()
@@ -303,7 +304,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
                         @Override
                         public boolean hasPermission(@NotNull CommandSourceStack source, int level) {
-                            return source.hasPermission(level);
+                            return McCompat.hasPermission(source, level);
                         }
 
                         @Override
@@ -342,7 +343,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
                         @Override
                         public String getWorldName(@NotNull CommandSourceStack source) {
-                            return source.getLevel().dimension().location().toString();
+                            return McCompat.dimensionId(source.getLevel());
                         }
                     }
             );
@@ -364,7 +365,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
             for (ServerPlayer player : bridge.getServer().getPlayerList().getPlayers()) {
                 lifeEngine.tickOnlinePlayer(
                         player.getUUID(),
-                        player.level().dimension().location().toString(),
+                        McCompat.dimensionId(player.level()),
                         player.getX(), player.getY(), player.getZ(),
                         now, config
                 );

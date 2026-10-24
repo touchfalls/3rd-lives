@@ -36,7 +36,7 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
 - [x] **Dead TAB NMS Packet Delivery**
   - **What:** `ClientboundPlayerInfoUpdatePacket` and `ClientboundPlayerInfoRemovePacket` for fake TAB entries.
   - **Where:** `io.github.lifesmp.paper.platform.PaperTabPresenter`.
-  - **Verification:** Verified by compilation against `paperDevBundle("1.21.1-R0.1-SNAPSHOT")` and unit tests.
+  - **Verification:** Verified by compilation against `paperDevBundle("1.21.1-R0.1-SNAPSHOT")` and unit tests. The `Entry` record gained `showHat` and `listOrder` after 1.21.1, so `tabEntry` builds it by parameter type; checked against the Paper 26.2 build 134 server classes (sources compile, every field and method the 1.21.1-built classes use exists).
 - [x] **Scoreboard Team `zz_dead` Sorting**
   - **What:** Vanilla Minecraft client sorts player TAB entries alphabetically by team name. `zz_dead` sorts after all life teams.
   - **Where:** `io.github.lifesmp.paper.scoreboard.PaperScoreboardManager`.
@@ -57,7 +57,13 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
 - [x] **Mixin Accessor for `ClientboundPlayerInfoUpdatePacket`**
   - **What:** Accessor mixin mapping `entries` field in `ClientboundPlayerInfoUpdatePacket` to allow injecting custom dead entries without mock `ServerPlayer` entities.
   - **Where:** `io.github.lifesmp.fabric.mixin.ClientboundPlayerInfoUpdatePacketAccessor`.
-  - **Verification:** Verified by `lifesmp.refmap.json`: remapped to Intermediary `field_12369:Ljava/util/List;`.
+  - **Verification:** Verified by `lifesmp.refmap.json`: remapped to Intermediary `field_12369:Ljava/util/List;`. On 26.x (`:fabric-26`) the game is unobfuscated and no refmap is used.
+- [x] **Minecraft 26.2 build (`:fabric-26`)**
+  - **What:** The `:fabric` sources compiled against Minecraft 26.2 and Fabric API 0.161.0+26.2 with Java 25. API differences are in `McCompat` (`fabric/src/mc1_21_1/java`, `fabric/src/mc26_2/java`).
+  - **Verification:** Verified by `./gradlew :fabric-26:build` (all Fabric tests run against 26.2) and `verifyJars`.
+- [ ] **Real-server check on 26.2**
+  - **What:** Start Paper 26.2 and Fabric 26.2 servers with the jars, join, die until banned, and check the `[DEAD]` TAB entry, colors and commands.
+  - **Status:** Startup checked on Paper 26.2 build 134 and Fabric Loader 0.20.1 with Fabric API 0.161.0+26.2 (Java 25): the plugin and the mod load, all mixins apply, the V1-V4 migrations run, and the console commands `/life`, `/life pardon` and `/life reload` work, with no errors from Life SMP. Not yet checked with a player joining: deaths, bans, colors and the `[DEAD]` TAB entry.
 - [x] **Scoreboard Team `zz_dead` in Fabric**
   - **What:** `ServerScoreboard.addPlayerToTeam` with `ChatFormatting.GRAY` for bottom-sorting dead entries.
   - **Where:** `io.github.lifesmp.fabric.scoreboard.FabricScoreboardManager`.

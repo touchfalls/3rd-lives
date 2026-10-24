@@ -6,6 +6,7 @@ package io.github.lifesmp.fabric.mixin;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.domain.model.PlayerColor;
 import io.github.lifesmp.fabric.LifeSmpFabricServer;
+import io.github.lifesmp.fabric.util.McCompat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
@@ -56,14 +57,14 @@ public abstract class ServerPlayerMixin {
         if (server == null) return;
 
         ServerPlayer self = (ServerPlayer) (Object) this;
-        String worldName = self.level().dimension().location().toString();
+        String worldName = McCompat.dimensionId(self.level());
         UUID killerUuid = damageSource.getEntity() instanceof ServerPlayer killer
                 ? killer.getUUID()
                 : null;
 
         server.getLifeEngine().handlePlayerDeath(
                 self.getUUID(),
-                self.getGameProfile().getName(),
+                McCompat.name(self.getGameProfile()),
                 worldName,
                 self.getX(),
                 self.getY(),

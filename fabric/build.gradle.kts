@@ -6,6 +6,11 @@ plugins {
     id("fabric-loom") version "1.19.2"
 }
 
+sourceSets {
+    main {
+        java.srcDir("src/mc1_21_1/java")
+    }
+}
 
 dependencies {
     implementation(project(":core"))
@@ -52,9 +57,10 @@ loom {
 }
 
 tasks.processResources {
-    inputs.property("version", project.version)
+    val props = mapOf("version" to project.version, "minecraft" to "~1.21.1", "java" to "21", "loader" to "0.16.0")
+    inputs.properties(props)
     filesMatching("fabric.mod.json") {
-        expand("version" to project.version)
+        expand(props)
     }
 }
 

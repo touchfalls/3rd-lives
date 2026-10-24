@@ -23,7 +23,7 @@ subprojects {
     apply(plugin = "java")
 
     extensions.configure<JavaPluginExtension> {
-        // Minecraft 1.21.1 target: Java 21
+        // Minecraft 1.21.1 target: Java 21 (:fabric-26 overrides it with Java 25)
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(21))
         }
@@ -45,16 +45,18 @@ subprojects {
 tasks.register("dist") {
     group = "distribution"
     description = "Assembles Paper and Fabric distribution jars into dist/ directory"
-    dependsOn(":paper:shadowJar", ":fabric:remapJar")
+    dependsOn(":paper:shadowJar", ":fabric:remapJar", ":fabric-26:jar")
 
     doLast {
         val distDir = layout.projectDirectory.dir("dist")
         val paperDist = distDir.dir("paper")
         val fabricDist = distDir.dir("fabric")
+        val fabric26Dist = distDir.dir("fabric-26")
 
         distDir.asFile.deleteRecursively()
         paperDist.asFile.mkdirs()
         fabricDist.asFile.mkdirs()
+        fabric26Dist.asFile.mkdirs()
 
         val paperLibsDir = project(":paper").layout.buildDirectory.dir("libs").get().asFile
         val paperJar = paperLibsDir.resolve("lifesmp-$modVersion.jar").let {
@@ -63,11 +65,14 @@ tasks.register("dist") {
         val fabricJar = project(":fabric").tasks.named<org.gradle.jvm.tasks.Jar>("remapJar").get().archiveFile.get().asFile
 
         paperJar.copyTo(paperDist.file("lifesmp-$modVersion.jar").asFile, overwrite = true)
+        val fabric26Jar = project(":fabric-26").tasks.named<org.gradle.jvm.tasks.Jar>("jar").get().archiveFile.get().asFile
         fabricJar.copyTo(fabricDist.file(fabricJar.name).asFile, overwrite = true)
+        fabric26Jar.copyTo(fabric26Dist.file(fabric26Jar.name).asFile, overwrite = true)
 
         logger.lifecycle("Dist artifacts assembled:")
         logger.lifecycle("  - Paper:  ${paperDist.file(paperJar.name).asFile.relativeTo(rootDir)}")
         logger.lifecycle("  - Fabric: ${fabricDist.file(fabricJar.name).asFile.relativeTo(rootDir)}")
+        logger.lifecycle("  - Fabric 26.x: ${fabric26Dist.file(fabric26Jar.name).asFile.relativeTo(rootDir)}")
     }
 }
 
@@ -79,13 +84,13 @@ tasks.register("verifyJars") {
     doLast {
         val distDir = layout.projectDirectory.dir("dist")
         val paperJar = distDir.dir("paper").file("lifesmp-$modVersion.jar").asFile
-        val fabricJar = distDir.dir("fabric").file("lifesmp-fabric-$modVersion.jar").asFile
+        val fabricJars = listOf(
+            distDir.dir("fabric").file("lifesmp-fabric-$modVersion.jar").asFile,
+            distDir.dir("fabric-26").file("lifesmp-fabric-26-$modVersion.jar").asFile
+        )
 
         if (!paperJar.exists()) {
             throw GradleException("Verification failed: Paper jar does not exist at ${paperJar.absolutePath}")
-        }
-        if (!fabricJar.exists()) {
-            throw GradleException("Verification failed: Fabric jar does not exist at ${fabricJar.absolutePath}")
         }
 
         // 1. Verify Paper JAR
@@ -149,82 +154,87 @@ tasks.register("verifyJars") {
             }
         }
 
-        // 2. Verify Fabric JAR
-        if (fabricJar.name.contains("SNAPSHOT", ignoreCase = true)) {
-            throw GradleException("Verification failed: Fabric jar name contains SNAPSHOT: ${fabricJar.name}")
-        }
-        if (fabricJar.name.contains("-dev.jar")) {
-            throw GradleException("Verification failed: Fabric jar is dev jar: ${fabricJar.name}")
-        }
-
-        java.util.zip.ZipFile(fabricJar).use { zip ->
-            // Check fabric.mod.json
-            val modJsonEntry = zip.getEntry("fabric.mod.json")
-            if (modJsonEntry == null) {
-                throw GradleException("Verification failed in Fabric jar: missing 'fabric.mod.json'")
+        // 2. Verify Fabric JARs (1.21.1 and 26.x)
+        for (fabricJar in fabricJars) {
+            if (!fabricJar.exists()) {
+                throw GradleException("Verification failed: Fabric jar does not exist at ${fabricJar.absolutePath}")
             }
-            val modJsonContent = zip.getInputStream(modJsonEntry).bufferedReader(Charsets.UTF_8).readText()
-            if (!modJsonContent.contains("\"id\":\"lifesmp\"") && !modJsonContent.contains("\"id\": \"lifesmp\"")) {
-                throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing id 'lifesmp'")
+            if (fabricJar.name.contains("SNAPSHOT", ignoreCase = true)) {
+                throw GradleException("Verification failed: Fabric jar name contains SNAPSHOT: ${fabricJar.name}")
             }
-            if (!modJsonContent.contains("\"version\":\"$modVersion\"") && !modJsonContent.contains("\"version\": \"$modVersion\"")) {
-                throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing version '$modVersion'")
-            }
-            if (!modJsonContent.contains("io.github.lifesmp.fabric.LifeSmpFabricServer")) {
-                throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing server entrypoint 'io.github.lifesmp.fabric.LifeSmpFabricServer'")
+            if (fabricJar.name.contains("-dev.jar")) {
+                throw GradleException("Verification failed: Fabric jar is dev jar: ${fabricJar.name}")
             }
 
-            // Check bundled message files
-            for (lang in listOf("en", "ru", "fr", "it", "es")) {
-                if (zip.getEntry("lifesmp/lang/$lang.properties") == null) {
-                    throw GradleException("Verification failed in Fabric jar: missing 'lifesmp/lang/$lang.properties'")
+            java.util.zip.ZipFile(fabricJar).use { zip ->
+                // Check fabric.mod.json
+                val modJsonEntry = zip.getEntry("fabric.mod.json")
+                if (modJsonEntry == null) {
+                    throw GradleException("Verification failed in Fabric jar: missing 'fabric.mod.json'")
                 }
-            }
+                val modJsonContent = zip.getInputStream(modJsonEntry).bufferedReader(Charsets.UTF_8).readText()
+                if (!modJsonContent.contains("\"id\":\"lifesmp\"") && !modJsonContent.contains("\"id\": \"lifesmp\"")) {
+                    throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing id 'lifesmp'")
+                }
+                if (!modJsonContent.contains("\"version\":\"$modVersion\"") && !modJsonContent.contains("\"version\": \"$modVersion\"")) {
+                    throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing version '$modVersion'")
+                }
+                if (!modJsonContent.contains("io.github.lifesmp.fabric.LifeSmpFabricServer")) {
+                    throw GradleException("Verification failed in Fabric jar: 'fabric.mod.json' missing server entrypoint 'io.github.lifesmp.fabric.LifeSmpFabricServer'")
+                }
 
-            // Check lifesmp.mixins.json
-            val mixinEntry = zip.getEntry("lifesmp.mixins.json")
-            if (mixinEntry == null) {
-                throw GradleException("Verification failed in Fabric jar: missing 'lifesmp.mixins.json'")
-            }
-
-            // Check JiJ jars (or embedded classes)
-            val entries = zip.entries().asSequence().map { it.name }.toList()
-            val hasHikariJiJ = entries.any { it.startsWith("META-INF/jars/HikariCP") } || zip.getEntry("com/zaxxer/hikari/HikariConfig.class") != null
-            if (!hasHikariJiJ) {
-                throw GradleException("Verification failed in Fabric jar: HikariCP is not present in META-INF/jars/ or as classes")
-            }
-
-            val hasSqliteJiJ = entries.any { it.startsWith("META-INF/jars/sqlite-jdbc") } || zip.getEntry("org/sqlite/JDBC.class") != null
-            if (!hasSqliteJiJ) {
-                throw GradleException("Verification failed in Fabric jar: sqlite-jdbc is not present in META-INF/jars/ or as classes")
-            }
-
-            // Inspect nested sqlite-jdbc jar in JiJ
-            val sqliteJijEntryName = entries.firstOrNull { it.startsWith("META-INF/jars/sqlite-jdbc") }
-            if (sqliteJijEntryName != null) {
-                val sqliteJijEntry = zip.getEntry(sqliteJijEntryName)
-                val tempSqlite = java.io.File.createTempFile("sqlite-jij", ".jar")
-                try {
-                    zip.getInputStream(sqliteJijEntry).use { input ->
-                        tempSqlite.outputStream().use { output -> input.copyTo(output) }
+                // Check bundled message files
+                for (lang in listOf("en", "ru", "fr", "it", "es")) {
+                    if (zip.getEntry("lifesmp/lang/$lang.properties") == null) {
+                        throw GradleException("Verification failed in Fabric jar: missing 'lifesmp/lang/$lang.properties'")
                     }
-                    java.util.zip.ZipFile(tempSqlite).use { nestedZip ->
-                        if (nestedZip.getEntry("org/sqlite/JDBC.class") == null) {
-                            throw GradleException("Verification failed in Fabric nested sqlite jar: missing 'org/sqlite/JDBC.class'")
+                }
+
+                // Check lifesmp.mixins.json
+                val mixinEntry = zip.getEntry("lifesmp.mixins.json")
+                if (mixinEntry == null) {
+                    throw GradleException("Verification failed in Fabric jar: missing 'lifesmp.mixins.json'")
+                }
+
+                // Check JiJ jars (or embedded classes)
+                val entries = zip.entries().asSequence().map { it.name }.toList()
+                val hasHikariJiJ = entries.any { it.startsWith("META-INF/jars/HikariCP") } || zip.getEntry("com/zaxxer/hikari/HikariConfig.class") != null
+                if (!hasHikariJiJ) {
+                    throw GradleException("Verification failed in Fabric jar: HikariCP is not present in META-INF/jars/ or as classes")
+                }
+
+                val hasSqliteJiJ = entries.any { it.startsWith("META-INF/jars/sqlite-jdbc") } || zip.getEntry("org/sqlite/JDBC.class") != null
+                if (!hasSqliteJiJ) {
+                    throw GradleException("Verification failed in Fabric jar: sqlite-jdbc is not present in META-INF/jars/ or as classes")
+                }
+
+                // Inspect nested sqlite-jdbc jar in JiJ
+                val sqliteJijEntryName = entries.firstOrNull { it.startsWith("META-INF/jars/sqlite-jdbc") }
+                if (sqliteJijEntryName != null) {
+                    val sqliteJijEntry = zip.getEntry(sqliteJijEntryName)
+                    val tempSqlite = java.io.File.createTempFile("sqlite-jij", ".jar")
+                    try {
+                        zip.getInputStream(sqliteJijEntry).use { input ->
+                            tempSqlite.outputStream().use { output -> input.copyTo(output) }
                         }
-                        val nestedService = nestedZip.getEntry("META-INF/services/java.sql.Driver")
-                        if (nestedService == null) {
-                            throw GradleException("Verification failed in Fabric nested sqlite jar: missing 'META-INF/services/java.sql.Driver'")
+                        java.util.zip.ZipFile(tempSqlite).use { nestedZip ->
+                            if (nestedZip.getEntry("org/sqlite/JDBC.class") == null) {
+                                throw GradleException("Verification failed in Fabric nested sqlite jar: missing 'org/sqlite/JDBC.class'")
+                            }
+                            val nestedService = nestedZip.getEntry("META-INF/services/java.sql.Driver")
+                            if (nestedService == null) {
+                                throw GradleException("Verification failed in Fabric nested sqlite jar: missing 'META-INF/services/java.sql.Driver'")
+                            }
                         }
+                    } finally {
+                        tempSqlite.delete()
                     }
-                } finally {
-                    tempSqlite.delete()
                 }
             }
         }
 
         logger.lifecycle("SUCCESS: All verification checks passed for Paper and Fabric jars!")
         logger.lifecycle("  - Paper:  dist/paper/${paperJar.name} (relocated HikariCP, un-relocated sqlite-jdbc, ServiceLoader Driver, paper-plugin.yml)")
-        logger.lifecycle("  - Fabric: dist/fabric/${fabricJar.name} (JiJ HikariCP, JiJ sqlite-jdbc, fabric.mod.json, mixins)")
+        logger.lifecycle("  - Fabric: ${fabricJars.joinToString { "dist/${it.parentFile.name}/${it.name}" }} (JiJ HikariCP, JiJ sqlite-jdbc, fabric.mod.json, mixins)")
     }
 }

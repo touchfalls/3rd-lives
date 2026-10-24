@@ -1,11 +1,11 @@
 # Life SMP
 
-A limited-lives survival mechanic for Minecraft 1.21.1 servers, available as a Paper plugin and as a server-side Fabric mod.
+A limited-lives survival mechanic for Minecraft 1.21.1 and 26.2 servers, available as a Paper plugin and as a server-side Fabric mod.
 
 [![Build](https://github.com/touchfalls/3rd-lives/actions/workflows/build.yml/badge.svg)](https://github.com/touchfalls/3rd-lives/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/touchfalls/3rd-lives)](https://github.com/touchfalls/3rd-lives/releases)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
-[![Minecraft 1.21.1](https://img.shields.io/badge/Minecraft-1.21.1-green)](#requirements)
+[![Minecraft 1.21.1 | 26.2](https://img.shields.io/badge/Minecraft-1.21.1%20%7C%2026.2-green)](#requirements)
 
 ## What it is
 
@@ -80,11 +80,11 @@ Outside arenas and outside a global PvP event:
 
 ## Requirements
 
-- Minecraft Java Edition server 1.21.1.
-- Java 21.
+- Minecraft Java Edition server 1.21.1 or 26.2.
+- Java 21 for 1.21.1, Java 25 for 26.2.
 - One of:
-  - Paper 1.21.1 or a Paper fork such as Purpur (plugin jar);
-  - Fabric Loader 0.16.0 or newer with Fabric API (mod jar).
+  - Paper 1.21.1 or 26.2, or a Paper fork such as Purpur (plugin jar, the same jar for both versions);
+  - Fabric Loader 0.16.0 or newer (1.21.1) or 0.18.4 or newer (26.2) with Fabric API (mod jar, one per Minecraft version).
 - Server side only. Players use an unmodified vanilla client.
 
 ## Installation
@@ -93,8 +93,9 @@ Download the jar for your platform from [Releases](https://github.com/touchfalls
 
 | Platform | File |
 |---|---|
-| Paper, Purpur | `lifesmp-paper-<version>.jar` |
-| Fabric | `lifesmp-fabric-<version>.jar` |
+| Paper, Purpur (1.21.1 and 26.2) | `lifesmp-paper-<version>.jar` |
+| Fabric 1.21.1 | `lifesmp-fabric-1.21.1-<version>.jar` |
+| Fabric 26.2 | `lifesmp-fabric-26.2-<version>.jar` |
 
 ### Paper
 
@@ -112,8 +113,8 @@ Download the jar for your platform from [Releases](https://github.com/touchfalls
 ### Fabric
 
 1. Stop the server.
-2. Make sure Fabric API for 1.21.1 is in the `mods/` folder.
-3. Put `lifesmp-fabric-<version>.jar` into the `mods/` folder.
+2. Make sure Fabric API for your Minecraft version is in the `mods/` folder.
+3. Put the `lifesmp-fabric-<minecraft version>-<version>.jar` that matches your server into the `mods/` folder.
 4. Start the server.
 5. Check the log for this line:
 
@@ -274,7 +275,7 @@ Replace the jar and restart. The database schema is migrated automatically and e
 
 ## Known limitations
 
-- Only Minecraft 1.21.1 is supported.
+- Only Minecraft 1.21.1 and 26.2 are supported. Versions in between are not tested.
 - Testing on Paper forks other than Paper itself has been limited.
 - The Fabric mod must be installed on the server; installing it on a client has no effect.
 - French, Italian and Spanish translations have not yet been reviewed by native speakers. Corrections are welcome.
@@ -307,7 +308,9 @@ Core services: `LifeEngine` (join, death, quit and the one-second tick), `AdminS
 
 ### Building
 
-Requires two JDKs: JDK 25 or newer to run Gradle (Fabric Loom 1.19 does not start on older JVMs) and JDK 21, which Gradle uses as the toolchain to compile the sources. The produced jars run on Java 21. The Gradle wrapper downloads everything else. If Gradle does not find JDK 21 on its own, point it to it with `-Porg.gradle.java.installations.paths=/path/to/jdk-21`.
+Requires JDK 25 or newer to run Gradle (Fabric Loom 1.19 does not start on older JVMs). The sources are compiled with a JDK 21 toolchain (`:core`, `:paper`, `:fabric`, all for 1.21.1) and a JDK 25 toolchain (`:fabric-26`, for Minecraft 26.x). Gradle downloads a missing toolchain JDK on its own. The Paper jar and the 1.21.1 Fabric jar run on Java 21.
+
+`:fabric-26` builds the Fabric sources of `:fabric` against Minecraft 26.2. The few Minecraft calls that differ between the versions are in `McCompat`, with one copy in `fabric/src/mc1_21_1/java` and one in `fabric/src/mc26_2/java`. The Paper jar is built against 1.21.1 only and also runs on 26.2.
 
 ```bash
 ./gradlew clean dist
@@ -316,7 +319,8 @@ Requires two JDKs: JDK 25 or newer to run Gradle (Fabric Loom 1.19 does not star
 Output:
 
 - `dist/paper/lifesmp-<version>.jar`
-- `dist/fabric/lifesmp-fabric-<version>.jar`
+- `dist/fabric/lifesmp-fabric-<version>.jar` (Minecraft 1.21.1)
+- `dist/fabric-26/lifesmp-fabric-26-<version>.jar` (Minecraft 26.2)
 
 Run the tests and check the jar contents:
 
@@ -330,7 +334,7 @@ Start a Fabric development server (files go to `fabric/run/`):
 ./gradlew :fabric:runServer
 ```
 
-For Paper, create a folder such as `test-server/` (ignored by Git), place a Paper 1.21.1 server jar there, copy `dist/paper/lifesmp-<version>.jar` into `test-server/plugins/` and start the server with Java 21.
+For Paper, create a folder such as `test-server/` (ignored by Git), place a Paper 1.21.1 or 26.2 server jar there, copy `dist/paper/lifesmp-<version>.jar` into `test-server/plugins/` and start the server with Java 21 (1.21.1) or Java 25 (26.2).
 
 ### Forking
 
@@ -339,7 +343,7 @@ For Paper, create a folder such as `test-server/` (ignored by Git), place a Pape
 | Version | `mod_version` in `gradle.properties` |
 | Group, Java toolchain | `build.gradle.kts` |
 | Project name | `settings.gradle.kts` |
-| Jar names | `archiveBaseName` in `paper/build.gradle.kts` and `fabric/build.gradle.kts`; file names checked in `verifyJars` in `build.gradle.kts` |
+| Jar names | `archiveBaseName` in `paper/build.gradle.kts`, `fabric/build.gradle.kts` and `fabric-26/build.gradle.kts`; file names checked in `verifyJars` in `build.gradle.kts` |
 | Java package | `io.github.lifesmp` in all modules; the HikariCP relocation target in `paper/build.gradle.kts` |
 | Paper descriptor | `paper/src/main/resources/paper-plugin.yml` (name, main class, permission) |
 | Fabric descriptor | `fabric/src/main/resources/fabric.mod.json` (mod id, entrypoint, dependencies) |

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Minecraft 26.2 support. The Paper jar runs on both Paper 1.21.1 and Paper 26.2. Fabric has a separate jar for 26.2 (`lifesmp-fabric-26.2-<version>.jar`, needs Java 25 and Fabric Loader 0.18.4 or newer).
+
+### Changed
+- The Fabric release jar for 1.21.1 is now named `lifesmp-fabric-1.21.1-<version>.jar`.
+
 ## [1.0.2] - 2026-10-23
 
 ### Fixed

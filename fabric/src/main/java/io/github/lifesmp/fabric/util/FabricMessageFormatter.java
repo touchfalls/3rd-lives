@@ -131,7 +131,7 @@ public final class FabricMessageFormatter {
                 }
             } else if (tag.equals("click:run_command") && matcher.group(2) != null) {
                 String command = matcher.group(2);
-                ClickEvent click = new ClickEvent(ClickEvent.Action.RUN_COMMAND, command);
+                ClickEvent click = McCompat.runCommand(command);
                 stateStack.push(new FormatState(current.colorRgb, current.gradient, current.bold, current.italic, click));
             } else if (NAMED_COLORS.containsKey(tag)) {
                 stateStack.push(new FormatState(NAMED_COLORS.get(tag), null, current.bold, current.italic, current.clickEvent));

@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Service managing atomic life transfer transactions between players.
@@ -147,7 +147,7 @@ public final class GiftService {
      *
      * @param recipientUuid        UUID of accepting player
      * @param recipientProfile     recipient profile
-     * @param donorProfileSupplier supplier providing donor's profile if donor is online
+     * @param donorProfileLookup   returns the profile of the donor with the given UUID, or null if the donor is offline
      * @param now                  current instant
      * @param config               active LifeConfig
      * @return AcceptResult detailing outcome
@@ -156,13 +156,13 @@ public final class GiftService {
     public AcceptResult acceptGift(
             @NotNull UUID recipientUuid,
             @NotNull LifeProfile recipientProfile,
-            @NotNull Supplier<LifeProfile> donorProfileSupplier,
+            @NotNull Function<UUID, LifeProfile> donorProfileLookup,
             @NotNull Instant now,
             @NotNull LifeConfig config
     ) {
         Objects.requireNonNull(recipientUuid, "recipientUuid cannot be null");
         Objects.requireNonNull(recipientProfile, "recipientProfile cannot be null");
-        Objects.requireNonNull(donorProfileSupplier, "donorProfileSupplier cannot be null");
+        Objects.requireNonNull(donorProfileLookup, "donorProfileLookup cannot be null");
         Objects.requireNonNull(now, "now cannot be null");
         Objects.requireNonNull(config, "config cannot be null");
 
@@ -182,7 +182,7 @@ public final class GiftService {
             );
         }
 
-        LifeProfile donorProfile = donorProfileSupplier.get();
+        LifeProfile donorProfile = donorProfileLookup.apply(request.donorUuid());
         if (donorProfile == null) {
             return AcceptResult.fail(
                     AcceptStatus.DONOR_OFFLINE,

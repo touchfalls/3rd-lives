@@ -29,6 +29,11 @@ class GiftServiceTest {
     private LifeProfile recipientProfile;
     private LifeProfile thirdPlayerProfile;
 
+    /** Resolves the donor by UUID, as the commands do; the request is already removed when this runs. */
+    private LifeProfile donorById(UUID uuid) {
+        return donorUuid.equals(uuid) ? donorProfile : null;
+    }
+
     @BeforeEach
     void setUp() {
         giftService = new GiftService(EconomyIntegration.noop());
@@ -86,7 +91,7 @@ class GiftServiceTest {
         // Recipient accepts at T + 10s
         Instant acceptTime = now.plusSeconds(10);
         GiftService.AcceptResult acceptResult = giftService.acceptGift(
-                recipientUuid, recipientProfile, () -> donorProfile, acceptTime, config
+                recipientUuid, recipientProfile, this::donorById, acceptTime, config
         );
 
         assertThat(acceptResult.status()).isEqualTo(GiftService.AcceptStatus.SUCCESS);
@@ -106,7 +111,7 @@ class GiftServiceTest {
     void giftingTwiceInARowPreservesFlagAndProgress() {
         // First gift: Donor (3 lives, 18,000s) -> Recipient (2 lives)
         giftService.initiateGift(donorUuid, donorProfile, recipientUuid, recipientProfile, now, config);
-        giftService.acceptGift(recipientUuid, recipientProfile, () -> donorProfile, now.plusSeconds(5), config);
+        giftService.acceptGift(recipientUuid, recipientProfile, this::donorById, now.plusSeconds(5), config);
 
         assertThat(donorProfile.getLives()).isEqualTo(2);
         assertThat(donorProfile.isGiftRegenActive()).isTrue();
@@ -120,7 +125,7 @@ class GiftServiceTest {
         assertThat(secondInit.status()).isEqualTo(GiftService.InitiateStatus.SUCCESS);
 
         GiftService.AcceptResult secondAccept = giftService.acceptGift(
-                thirdPlayerUuid, thirdPlayerProfile, () -> donorProfile, secondTime.plusSeconds(5), config
+                thirdPlayerUuid, thirdPlayerProfile, this::donorById, secondTime.plusSeconds(5), config
         );
         assertThat(secondAccept.status()).isEqualTo(GiftService.AcceptStatus.SUCCESS);
 
@@ -140,13 +145,13 @@ class GiftServiceTest {
 
         // First accept succeeds
         GiftService.AcceptResult first = giftService.acceptGift(
-                recipientUuid, recipientProfile, () -> donorProfile, now.plusSeconds(5), config
+                recipientUuid, recipientProfile, this::donorById, now.plusSeconds(5), config
         );
         assertThat(first.status()).isEqualTo(GiftService.AcceptStatus.SUCCESS);
 
         // Second accept immediately fails
         GiftService.AcceptResult second = giftService.acceptGift(
-                recipientUuid, recipientProfile, () -> donorProfile, now.plusSeconds(6), config
+                recipientUuid, recipientProfile, this::donorById, now.plusSeconds(6), config
         );
         assertThat(second.status()).isEqualTo(GiftService.AcceptStatus.NO_PENDING_REQUEST);
         assertThat(recipientProfile.getLives()).isEqualTo(3); // does not increment again
@@ -157,9 +162,9 @@ class GiftServiceTest {
     void donorOfflineAbortsGift() {
         giftService.initiateGift(donorUuid, donorProfile, recipientUuid, recipientProfile, now, config);
 
-        // Donor disconnects -> donorProfileSupplier returns null
+        // Donor disconnects -> donor lookup returns null
         GiftService.AcceptResult result = giftService.acceptGift(
-                recipientUuid, recipientProfile, () -> null, now.plusSeconds(5), config
+                recipientUuid, recipientProfile, id -> null, now.plusSeconds(5), config
         );
 
         assertThat(result.status()).isEqualTo(GiftService.AcceptStatus.DONOR_OFFLINE);
@@ -175,7 +180,7 @@ class GiftServiceTest {
         // Timeout is 60 seconds; accept at 61 seconds
         Instant expiredTime = now.plusSeconds(61);
         GiftService.AcceptResult result = giftService.acceptGift(
-                recipientUuid, recipientProfile, () -> donorProfile, expiredTime, config
+                recipientUuid, recipientProfile, this::donorById, expiredTime, config
         );
 
         assertThat(result.status()).isEqualTo(GiftService.AcceptStatus.REQUEST_EXPIRED);

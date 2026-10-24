@@ -414,11 +414,7 @@ public final class FabricCommandRegistrar<S> {
         GiftService.AcceptResult result = lifeEngine.getGiftService().acceptGift(
                 recipientUuid,
                 recipientProfile,
-                () -> {
-                    var pending = lifeEngine.getGiftService().getPendingRequest(recipientUuid, Instant.now());
-                    if (pending == null) return null;
-                    return lifeEngine.getProfileCache().getCachedProfile(pending.donorUuid()).orElse(null);
-                },
+                donorUuid -> lifeEngine.getProfileCache().getCachedProfile(donorUuid).orElse(null),
                 Instant.now(),
                 config
         );

@@ -431,16 +431,12 @@ public final class PaperCommandRegistrar {
         GiftService.AcceptResult result = lifeEngine.getGiftService().acceptGift(
                 recipient.getUniqueId(),
                 recipientProfile,
-                () -> {
-                    var pending = lifeEngine.getGiftService().getPendingRequest(recipient.getUniqueId(), Instant.now());
-                    if (pending == null) {
-                        return null;
-                    }
-                    Player donorPlayer = Bukkit.getPlayer(pending.donorUuid());
+                donorUuid -> {
+                    Player donorPlayer = Bukkit.getPlayer(donorUuid);
                     if (donorPlayer == null || !donorPlayer.isOnline()) {
                         return null;
                     }
-                    return lifeEngine.getProfileCache().getCachedProfile(pending.donorUuid()).orElse(null);
+                    return lifeEngine.getProfileCache().getCachedProfile(donorUuid).orElse(null);
                 },
                 Instant.now(),
                 config

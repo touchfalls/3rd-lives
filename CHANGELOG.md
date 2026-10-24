@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Minecraft 26.2 support. The Paper jar runs on both Paper 1.21.1 and Paper 26.2. Fabric has a separate jar for 26.2 (`lifesmp-fabric-26.2-<version>.jar`, needs Java 25 and Fabric Loader 0.18.4 or newer).
 
+### Fixed
+- `/life accept` accepted no gift: the request was removed before the donor was looked up, so every accept answered that the request had expired. Affects Paper and Fabric, all versions up to 1.0.2.
+
 ### Changed
 - The Fabric release jar for 1.21.1 is now named `lifesmp-fabric-1.21.1-<version>.jar`.
 

@@ -72,10 +72,14 @@ fi
 [ -r "$TOKEN_FILE" ] || { echo "cannot read token file: $TOKEN_FILE" >&2; exit 1; }
 TOKEN="$(tr -d '[:space:]' < "$TOKEN_FILE")"
 
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+
 upload() { # $1=data json, $2=jar
+  # The JSON goes in through a file: curl cuts an inline -F value at the first ';'
+  printf '%s' "$1" > "$TMP/data.json"
   curl --fail-with-body -sS -X POST "https://api.modrinth.com/v2/version" \
     -H "Authorization: $TOKEN" -H "User-Agent: $USER_AGENT" \
-    -F "data=$1;type=application/json" \
+    -F "data=<$TMP/data.json;type=application/json" \
     -F "file=@$2;type=application/java-archive"
   echo
 }

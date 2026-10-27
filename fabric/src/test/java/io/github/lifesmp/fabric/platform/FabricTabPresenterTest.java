@@ -73,6 +73,20 @@ class FabricTabPresenterTest {
     }
 
     @Test
+    @DisplayName("hideDead and showDead send no packet for the UUID of a player who is online")
+    void onlinePlayerGetsNoDeadPackets() {
+        UUID online = UUID.randomUUID();
+        FabricTabPresenter guarded = new FabricTabPresenter(
+                () -> server, () -> config, scoreboardManager,
+                broadcastedPackets::add, (uuid, packet) -> {}, Runnable::run, online::equals);
+
+        guarded.showDead(new DeadEntry(online, "Alive", Instant.now().plusSeconds(3600)));
+        guarded.hideDead(online);
+
+        assertThat(broadcastedPackets).isEmpty();
+    }
+
+    @Test
     @DisplayName("hideDead removes from dead team and dispatches remove packet")
     void hideDeadDispatchesPacket() {
         UUID deadUuid = UUID.randomUUID();

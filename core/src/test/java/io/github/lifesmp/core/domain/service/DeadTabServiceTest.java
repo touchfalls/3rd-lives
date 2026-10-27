@@ -68,11 +68,11 @@ class DeadTabServiceTest {
     }
 
     @Test
-    @DisplayName("Idempotent removeDead: removing non-existent UUID is safe")
-    void removeDeadNonExistentIsIdempotent() {
+    @DisplayName("removeDead without a dead entry sends nothing (a remove packet would hide a living player)")
+    void removeDeadNonExistentSendsNothing() {
         UUID uuid = UUID.randomUUID();
         assertDoesNotThrow(() -> deadTabService.removeDead(uuid));
-        assertTrue(tabPresenter.hiddenDead.contains(uuid));
+        assertFalse(tabPresenter.hiddenDead.contains(uuid));
     }
 
     @Test

@@ -29,6 +29,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -77,6 +78,7 @@ public final class FabricTabPresenter implements TabPresenter {
 
     private final Map<UUID, String> deadPlayerNames = new ConcurrentHashMap<>();
     private final Executor afterQuitExecutor;
+    private final Predicate<UUID> isOnline;
 
     public FabricTabPresenter(
             @NotNull Supplier<MinecraftServer> serverSupplier,
@@ -114,6 +116,10 @@ public final class FabricTabPresenter implements TabPresenter {
                         CompletableFuture.runAsync(task,
                                 CompletableFuture.delayedExecutor(QUIT_GRACE_MS, TimeUnit.MILLISECONDS, server));
                     }
+                },
+                uuid -> {
+                    MinecraftServer server = serverSupplier.get();
+                    return server != null && server.getPlayerList().getPlayer(uuid) != null;
                 }
         );
     }
@@ -136,6 +142,19 @@ public final class FabricTabPresenter implements TabPresenter {
             @NotNull BiConsumer<UUID, Packet<?>> playerPacketSender,
             @NotNull Executor afterQuitExecutor
     ) {
+        this(serverSupplier, configSupplier, scoreboardManager, packetBroadcaster, playerPacketSender, afterQuitExecutor, uuid -> false);
+    }
+
+    public FabricTabPresenter(
+            @NotNull Supplier<MinecraftServer> serverSupplier,
+            @NotNull Supplier<LifeConfig> configSupplier,
+            @NotNull FabricScoreboardManager scoreboardManager,
+            @NotNull Consumer<Packet<?>> packetBroadcaster,
+            @NotNull BiConsumer<UUID, Packet<?>> playerPacketSender,
+            @NotNull Executor afterQuitExecutor,
+            @NotNull Predicate<UUID> isOnline
+    ) {
+        this.isOnline = Objects.requireNonNull(isOnline, "isOnline cannot be null");
         this.afterQuitExecutor = Objects.requireNonNull(afterQuitExecutor, "afterQuitExecutor cannot be null");
         this.serverSupplier = Objects.requireNonNull(serverSupplier, "serverSupplier cannot be null");
         this.configSupplier = Objects.requireNonNull(configSupplier, "configSupplier cannot be null");
@@ -186,6 +205,10 @@ public final class FabricTabPresenter implements TabPresenter {
         dispatchToMain(() -> {
             if (name != null) {
                 scoreboardManager.removeFromDeadTeam(name);
+            }
+            // A remove packet for a player who is online makes other clients stop showing that player
+            if (isOnline.test(uuid)) {
+                return;
             }
 
             ClientboundPlayerInfoRemovePacket packet = new ClientboundPlayerInfoRemovePacket(List.of(uuid));
@@ -296,7 +319,7 @@ public final class FabricTabPresenter implements TabPresenter {
     private void afterQuit(UUID uuid, Runnable task) {
         afterQuitExecutor.execute(() -> {
             // hideDead may have run during the grace period (pardon, reset, expiry)
-            if (deadPlayerNames.containsKey(uuid)) {
+            if (deadPlayerNames.containsKey(uuid) && !isOnline.test(uuid)) {
                 dispatchToMain(task);
             }
         });

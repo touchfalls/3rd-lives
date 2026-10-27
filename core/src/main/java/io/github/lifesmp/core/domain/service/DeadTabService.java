@@ -144,14 +144,16 @@ public final class DeadTabService {
 
     /**
      * Removes a player from the dead TAB list (e.g. on /life pardon, /life reset, or ban expiration).
-     * Idempotent: safe to invoke repeatedly or when not in cache.
+     * Idempotent: does nothing when the player has no dead entry, so no packet is sent for the UUID
+     * of a living player (clients drop the player's TAB entry on a remove packet and then stop showing them).
      *
      * @param uuid player UUID
      */
     public void removeDead(@NotNull UUID uuid) {
         Objects.requireNonNull(uuid, "uuid cannot be null");
-        deadEntries.remove(uuid);
-        tabPresenter.hideDead(uuid);
+        if (deadEntries.remove(uuid) != null) {
+            tabPresenter.hideDead(uuid);
+        }
     }
 
     /**

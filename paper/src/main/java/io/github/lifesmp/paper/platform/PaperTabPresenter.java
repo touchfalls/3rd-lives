@@ -107,6 +107,10 @@ public final class PaperTabPresenter implements TabPresenter {
             if (name != null) {
                 scoreboardManager.removeFromDeadTeam(name);
             }
+            // A remove packet for a player who is online makes other clients stop showing that player
+            if (Bukkit.getPlayer(uuid) != null) {
+                return;
+            }
 
             ClientboundPlayerInfoRemovePacket packet = new ClientboundPlayerInfoRemovePacket(List.of(uuid));
             for (Player player : Bukkit.getOnlinePlayers()) {
@@ -243,7 +247,7 @@ public final class PaperTabPresenter implements TabPresenter {
     private void afterQuit(UUID uuid, Runnable task) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // hideDead may have run during the grace period (pardon, reset, expiry)
-            if (deadPlayerNames.containsKey(uuid)) {
+            if (deadPlayerNames.containsKey(uuid) && Bukkit.getPlayer(uuid) == null) {
                 task.run();
             }
         }, QUIT_GRACE_TICKS);

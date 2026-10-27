@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-27
+
+### Fixed
+- Players no longer vanish for other players. Life SMP sent the "remove from TAB" packet for the UUID of players who were online, and clients stop showing a player without a TAB entry. This happened after `/life set` or `/life reset` on an online player, and when a player came back after a death ban. The packet is now sent only for real dead entries and never for a player who is online (Paper and Fabric).
+
 ## [1.1.0] - 2026-10-25
 
 ### Added

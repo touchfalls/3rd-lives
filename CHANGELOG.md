@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-11-01
+
+### Added
+- Minecraft 26.3 support. The Paper jar runs on Paper 26.3 too. Fabric has a jar for 26.3 (`lifesmp-fabric-26.3-<version>.jar`, needs Java 25, Fabric Loader 0.18.4 or newer and Fabric API 0.165.0 or newer).
+
+### Changed
+- The Fabric 26.x jar is now built for 26.3 instead of 26.2. Use 1.1.1 on Fabric 26.2.
+
 ## [1.1.1] - 2026-10-27
 
 ### Fixed

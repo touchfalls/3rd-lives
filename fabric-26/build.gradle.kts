@@ -27,9 +27,9 @@ dependencies {
     implementation(project(":core"))
     include(project(":core"))
 
-    minecraft("com.mojang:minecraft:26.2")
+    minecraft("com.mojang:minecraft:26.3")
     implementation("net.fabricmc:fabric-loader:0.20.1")
-    implementation("net.fabricmc.fabric-api:fabric-api:0.161.0+26.2")
+    implementation("net.fabricmc.fabric-api:fabric-api:0.165.0+26.3")
 
     include("com.zaxxer:HikariCP:5.1.0")
     include("org.xerial:sqlite-jdbc:3.45.3.0")
@@ -55,7 +55,7 @@ loom {
 }
 
 tasks.processResources {
-    val props = mapOf("version" to project.version, "minecraft" to "~26.2", "java" to "25", "loader" to "0.18.4")
+    val props = mapOf("version" to project.version, "minecraft" to "~26.3", "java" to "25", "loader" to "0.18.4")
     inputs.properties(props)
     filesMatching("fabric.mod.json") {
         expand(props)

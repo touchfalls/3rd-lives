@@ -55,7 +55,7 @@ jobs:
           test -n "$PAPER_JAR" && test -n "$FABRIC_JAR" && test -n "$FABRIC_26_JAR"
           cp "$PAPER_JAR" "release/lifesmp-paper-${VERSION}.jar"
           cp "$FABRIC_JAR" "release/lifesmp-fabric-1.21.1-${VERSION}.jar"
-          cp "$FABRIC_26_JAR" "release/lifesmp-fabric-26.2-${VERSION}.jar"
+          cp "$FABRIC_26_JAR" "release/lifesmp-fabric-26.3-${VERSION}.jar"
           ls -l release
 
       - name: Create GitHub Release
@@ -66,5 +66,5 @@ jobs:
           files: |
             release/lifesmp-paper-${{ env.VERSION }}.jar
             release/lifesmp-fabric-1.21.1-${{ env.VERSION }}.jar
-            release/lifesmp-fabric-26.2-${{ env.VERSION }}.jar
+            release/lifesmp-fabric-26.3-${{ env.VERSION }}.jar
           fail_on_unmatched_files: true

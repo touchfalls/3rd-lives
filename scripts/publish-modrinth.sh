@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 touchfalls
 #
-# Publishes the Paper jar and the two Fabric jars (1.21.1, 26.2) of a release to Modrinth as three versions.
+# Publishes the Paper jar and the two Fabric jars (1.21.1, 26.3) of a release to Modrinth as three versions.
 #
 #   scripts/publish-modrinth.sh <version> <modrinth-project-id> [--dry-run]
 #
@@ -58,14 +58,14 @@ PY
 }
 
 FABRIC_API_DEP="[{\"project_id\":\"$FABRIC_API_PROJECT_ID\",\"dependency_type\":\"required\"}]"
-PAPER_DATA="$(build_data Paper '["paper","purpur"]' '[]' '["1.21.1","26.2"]')"
+PAPER_DATA="$(build_data Paper '["paper","purpur"]' '[]' '["1.21.1","26.2","26.3"]')"
 FABRIC_DATA="$(build_data 'Fabric 1.21.1' '["fabric"]' "$FABRIC_API_DEP" '["1.21.1"]')"
-FABRIC_26_DATA="$(build_data 'Fabric 26.2' '["fabric"]' "$FABRIC_API_DEP" '["26.2"]')"
+FABRIC_26_DATA="$(build_data 'Fabric 26.3' '["fabric"]' "$FABRIC_API_DEP" '["26.3"]')"
 
 if [ "$DRY_RUN" = "--dry-run" ]; then
   echo "== Paper ($PAPER_JAR)"; echo "$PAPER_DATA"
   echo "== Fabric 1.21.1 ($FABRIC_JAR)"; echo "$FABRIC_DATA"
-  echo "== Fabric 26.2 ($FABRIC_26_JAR)"; echo "$FABRIC_26_DATA"
+  echo "== Fabric 26.3 ($FABRIC_26_JAR)"; echo "$FABRIC_26_DATA"
   exit 0
 fi
 

@@ -1,11 +1,11 @@
 # Life SMP
 
-A limited-lives survival mechanic for Minecraft 1.21.1 and 26.2 servers, available as a Paper plugin and as a server-side Fabric mod.
+A limited-lives survival mechanic for Minecraft 1.21.1, 26.2 and 26.3 servers, available as a Paper plugin and as a server-side Fabric mod.
 
 [![Build](https://github.com/touchfalls/3rd-lives/actions/workflows/build.yml/badge.svg)](https://github.com/touchfalls/3rd-lives/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/touchfalls/3rd-lives)](https://github.com/touchfalls/3rd-lives/releases)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
-[![Minecraft 1.21.1 | 26.2](https://img.shields.io/badge/Minecraft-1.21.1%20%7C%2026.2-green)](#requirements)
+[![Minecraft 1.21.1 | 26.2 | 26.3](https://img.shields.io/badge/Minecraft-1.21.1%20%7C%2026.2%20%7C%2026.3-green)](#requirements)
 
 ## What it is
 
@@ -80,11 +80,11 @@ Outside arenas and outside a global PvP event:
 
 ## Requirements
 
-- Minecraft Java Edition server 1.21.1 or 26.2.
-- Java 21 for 1.21.1, Java 25 for 26.2.
+- Minecraft Java Edition server 1.21.1, 26.2 or 26.3.
+- Java 21 for 1.21.1, Java 25 for 26.2 and 26.3.
 - One of:
-  - Paper 1.21.1 or 26.2, or a Paper fork such as Purpur (plugin jar, the same jar for both versions);
-  - Fabric Loader 0.16.0 or newer (1.21.1) or 0.18.4 or newer (26.2) with Fabric API (mod jar, one per Minecraft version).
+  - Paper 1.21.1, 26.2 or 26.3, or a Paper fork such as Purpur (plugin jar, the same jar for all versions);
+  - Fabric Loader 0.16.0 or newer (1.21.1) or 0.18.4 or newer (26.3) with Fabric API (mod jar, one per Minecraft version).
 - Server side only. Players use an unmodified vanilla client.
 
 ## Installation
@@ -93,9 +93,9 @@ Download the jar for your platform from [Releases](https://github.com/touchfalls
 
 | Platform | File |
 |---|---|
-| Paper, Purpur (1.21.1 and 26.2) | `lifesmp-paper-<version>.jar` |
+| Paper, Purpur (1.21.1, 26.2 and 26.3) | `lifesmp-paper-<version>.jar` |
 | Fabric 1.21.1 | `lifesmp-fabric-1.21.1-<version>.jar` |
-| Fabric 26.2 | `lifesmp-fabric-26.2-<version>.jar` |
+| Fabric 26.3 | `lifesmp-fabric-26.3-<version>.jar` |
 
 ### Paper
 
@@ -275,7 +275,7 @@ Replace the jar and restart. The database schema is migrated automatically and e
 
 ## Known limitations
 
-- Only Minecraft 1.21.1 and 26.2 are supported. Versions in between are not tested.
+- Only Minecraft 1.21.1, 26.2 and 26.3 are supported. Versions in between are not tested. Since 1.1.2 the Fabric 26.x jar is built for 26.3 only; Fabric 26.2 needs 1.1.1 or older, Paper 26.2 and 26.3 use the same jar.
 - Testing on Paper forks other than Paper itself has been limited.
 - The Fabric mod must be installed on the server; installing it on a client has no effect.
 - French, Italian and Spanish translations have not yet been reviewed by native speakers. Corrections are welcome.
@@ -310,7 +310,7 @@ Core services: `LifeEngine` (join, death, quit and the one-second tick), `AdminS
 
 Requires JDK 25 or newer to run Gradle (Fabric Loom 1.19 does not start on older JVMs). The sources are compiled with a JDK 21 toolchain (`:core`, `:paper`, `:fabric`, all for 1.21.1) and a JDK 25 toolchain (`:fabric-26`, for Minecraft 26.x). Gradle downloads a missing toolchain JDK on its own. The Paper jar and the 1.21.1 Fabric jar run on Java 21.
 
-`:fabric-26` builds the Fabric sources of `:fabric` against Minecraft 26.2. The few Minecraft calls that differ between the versions are in `McCompat`, with one copy in `fabric/src/mc1_21_1/java` and one in `fabric/src/mc26_2/java`. The Paper jar is built against 1.21.1 only and also runs on 26.2.
+`:fabric-26` builds the Fabric sources of `:fabric` against Minecraft 26.3. The few Minecraft calls that differ between the versions are in `McCompat`, with one copy in `fabric/src/mc1_21_1/java` and one in `fabric/src/mc26_2/java`. The Paper jar is built against 1.21.1 only and also runs on 26.2.
 
 ```bash
 ./gradlew clean dist
@@ -320,7 +320,7 @@ Output:
 
 - `dist/paper/lifesmp-<version>.jar`
 - `dist/fabric/lifesmp-fabric-<version>.jar` (Minecraft 1.21.1)
-- `dist/fabric-26/lifesmp-fabric-26-<version>.jar` (Minecraft 26.2)
+- `dist/fabric-26/lifesmp-fabric-26-<version>.jar` (Minecraft 26.3)
 
 Run the tests and check the jar contents:
 

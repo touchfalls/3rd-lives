@@ -25,11 +25,9 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -94,7 +92,6 @@ public final class PaperBountyCommands implements Listener {
         return 1;
     }
 
-    /** Buyout defaults to 150% of the XP stake, so a forgotten argument does not make the bounty cheap. */
     private int set(CommandSourceStack source, String targetName, int xp, int lives, int buyout) {
         if (!(source.getSender() instanceof Player issuer)) {
             return 0;
@@ -104,7 +101,7 @@ public final class PaperBountyCommands implements Listener {
             send(issuer, config().formatMessage("gift.player-offline", "player", targetName));
             return 0;
         }
-        int price = buyout >= 0 ? buyout : Math.max(bounties.getSettings().minBuyout(), xp * 3 / 2);
+        int price = bounties.buyoutOrDefault(buyout, xp);
         BountyService.Status status = bounties.validatePlace(
                 issuer.getUniqueId(), target.getUniqueId(), xp, lives, price, issuer.getLevel());
         if (status != BountyService.Status.OK) {
@@ -182,34 +179,8 @@ public final class PaperBountyCommands implements Listener {
             return 0;
         }
         String shownName = target.getName() != null ? target.getName() : name;
-        long duration = bounties.getSettings().durationSeconds();
-        Bounty bounty = bounties.getBounty(target.getUniqueId()).orElse(null);
-        boolean wanted = bounties.isWanted(target.getUniqueId());
-        if (bounty == null && !wanted) {
-            send(sender, config().formatMessage("bounty.info-none", "player", shownName));
-            return 1;
-        }
-        if (bounty != null) {
-            send(sender, config().formatMessage("bounty.info", Map.of(
-                    "player", shownName,
-                    "issuer", bounty.issuerName(),
-                    "xp", String.valueOf(bounty.xpLevels()),
-                    "lives", String.valueOf(bounty.lives()),
-                    "items", String.valueOf(PaperRewardGateway.decode(bounty.items()).length),
-                    "buyout", String.valueOf(bounty.buyoutLevels()),
-                    "remaining", config().formatDuration(Duration.ofSeconds(Math.max(0, duration - bounty.survivedSeconds())))
-            )));
-            int lives = plugin.getLifeEngine().getProfileCache().getCachedProfile(target.getUniqueId())
-                    .map(p -> p.getLives()).orElse(2);
-            if (lives <= 1) {
-                send(sender, config().formatMessage("bounty.info-frozen"));
-            }
-        }
-        if (wanted) {
-            long left = Math.max(0, duration - bounties.getWantedSurvivedSeconds(target.getUniqueId()));
-            send(sender, config().formatMessage("bounty.info-wanted", Map.of(
-                    "player", shownName, "remaining", config().formatDuration(Duration.ofSeconds(left)))));
-        }
+        bounties.infoMessages(target.getUniqueId(), shownName, blob -> PaperRewardGateway.decode(blob).length, config())
+                .forEach(line -> send(sender, line));
         return 1;
     }
 }

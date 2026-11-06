@@ -178,7 +178,6 @@ class BountyServiceTest {
         place(10, 0, 10);
         kill(target, hunter);
         join(target, 3);
-        bounties.cancel(issuer, config); // no-op, already claimed
         bounties.place(issuer, "I", "T", target, null, 10, 0, 10, 100, now, config);
         kill(target, hunter);
         assertThat(bounties.getBounty(target)).isPresent();
@@ -286,5 +285,52 @@ class BountyServiceTest {
         verify(repo, never()).deleteStreak(hunter);
         kill(hunter, null);
         verify(repo).deleteStreak(hunter);
+    }
+
+    @Test
+    void fightingBackAgainstWeakerAttackerDoesNotMakeWanted() {
+        LifeProfile gold = cache.getCachedProfile(target).orElseThrow();
+        LifeProfile green = cache.getCachedProfile(hunter).orElseThrow();
+        gold.setLives(2);
+        // The gold target starts the fight, the green hunter kills them back
+        pvp.evaluate(target, gold, hunter, green, false, false, now, config);
+        pvp.evaluate(hunter, green, target, gold, false, false, now, config);
+        kill(target, hunter);
+        assertThat(bounties.isWanted(hunter)).isFalse();
+
+        // Starting the fight yourself still counts
+        UUID other = UUID.randomUUID();
+        join(other, 2);
+        LifeProfile otherProfile = cache.getCachedProfile(other).orElseThrow();
+        pvp.evaluate(issuer, cache.getCachedProfile(issuer).orElseThrow(), other, otherProfile, false, false, now, config);
+        kill(other, issuer);
+        assertThat(bounties.isWanted(issuer)).isTrue();
+    }
+
+    @Test
+    void failedPayoutKeepsBounty() {
+        place(10, 0, 10);
+        when(rewards.give(eq(hunter), any(), anyInt(), anyInt())).thenThrow(new IllegalStateException("bad items"));
+        try {
+            kill(target, hunter);
+        } catch (IllegalStateException expected) {
+            // the platform failed to hand out the items
+        }
+        assertThat(bounties.getBounty(target)).isPresent();
+    }
+
+    @Test
+    void infoAndDefaultBuyout() {
+        assertThat(bounties.buyoutOrDefault(-1, 10)).isEqualTo(15);
+        assertThat(bounties.buyoutOrDefault(-1, 2)).isEqualTo(settings.minBuyout());
+        assertThat(bounties.buyoutOrDefault(7, 10)).isEqualTo(7);
+
+        assertThat(bounties.infoMessages(target, "Target", b -> 3, config)).hasSize(1);
+        place(10, 0, 10);
+        List<String> lines = bounties.infoMessages(target, "Target", b -> 3, config);
+        assertThat(lines).hasSize(1);
+        assertThat(lines.get(0)).contains("Target", "Issuer", "3 item stacks");
+        join(target, 1);
+        assertThat(bounties.infoMessages(target, "Target", b -> 3, config)).hasSize(2);
     }
 }

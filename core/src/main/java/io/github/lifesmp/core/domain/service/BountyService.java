@@ -17,13 +17,17 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 
 /**
  * Bounties placed by players and the server-side wanted status.
@@ -131,8 +135,52 @@ public final class BountyService {
         return settings.get().enabled() && (bounties.containsKey(player) || wantedSeconds.containsKey(player));
     }
 
-    public synchronized long getWantedSurvivedSeconds(@NotNull UUID player) {
-        return wantedSeconds.getOrDefault(player, 0L);
+    /**
+     * The buyout price: the given one, or for a negative value 150% of the XP stake (at least the minimum),
+     * so a forgotten argument does not make the bounty cheap to buy out.
+     */
+    public int buyoutOrDefault(int buyout, int xp) {
+        return buyout >= 0 ? buyout : Math.max(settings.get().minBuyout(), xp * 3 / 2);
+    }
+
+    /**
+     * The {@code /bounty info} lines for a player.
+     *
+     * @param countStacks counts the item stacks in a stake blob; the blob format belongs to the platform
+     */
+    @NotNull
+    public synchronized List<String> infoMessages(
+            @NotNull UUID player, @NotNull String name, @NotNull ToIntFunction<byte[]> countStacks,
+            @NotNull LifeConfig config
+    ) {
+        long duration = settings.get().durationSeconds();
+        Bounty bounty = bounties.get(player);
+        Long wanted = wantedSeconds.get(player);
+        if (bounty == null && wanted == null) {
+            return List.of(config.formatMessage("bounty.info-none", "player", name));
+        }
+        List<String> lines = new ArrayList<>();
+        if (bounty != null) {
+            int stacks = bounty.items() == null ? 0 : countStacks.applyAsInt(bounty.items());
+            lines.add(config.formatMessage("bounty.info", Map.of(
+                    "player", name,
+                    "issuer", bounty.issuerName(),
+                    "xp", String.valueOf(bounty.xpLevels()),
+                    "lives", String.valueOf(bounty.lives()),
+                    "items", String.valueOf(stacks),
+                    "buyout", String.valueOf(bounty.buyoutLevels()),
+                    "remaining", config.formatDuration(Duration.ofSeconds(Math.max(0, duration - bounty.survivedSeconds())))
+            )));
+            if (profileCache.getCachedProfile(player).map(LifeProfile::getLives).orElse(2) <= 1) {
+                lines.add(config.formatMessage("bounty.info-frozen"));
+            }
+        }
+        if (wanted != null) {
+            lines.add(config.formatMessage("bounty.info-wanted", Map.of(
+                    "player", name,
+                    "remaining", config.formatDuration(Duration.ofSeconds(Math.max(0, duration - wanted))))));
+        }
+        return lines;
     }
 
     // ---- player actions ----
@@ -210,9 +258,9 @@ public final class BountyService {
             return Status.NO_BOUNTY;
         }
         int pct = settings.get().cancelRefundPercent();
-        removeBounty(bounty.target());
         rewards.give(issuer, bounty.items(), pct, bounty.xpLevels() * pct / 100);
         addLives(issuer, bounty.lives() * pct / 100, config);
+        removeBounty(bounty.target());
         notifications.sendMessage(issuer, config.formatMessage("bounty.cancelled", "percent", String.valueOf(pct)));
         notifications.sendMessage(bounty.target(), config.formatMessage("bounty.removed-target"));
         return Status.OK;
@@ -231,8 +279,8 @@ public final class BountyService {
         if (targetXp < bounty.buyoutLevels()) {
             return Status.NOT_ENOUGH_XP;
         }
-        removeBounty(target);
         payStake(target, bounty, config);
+        removeBounty(target);
         notifications.sendMessage(target, config.formatMessage("bounty.bought-out"));
         notifications.sendMessage(bounty.issuer(), config.formatMessage("bounty.bought-out-issuer"));
         return Status.OK;
@@ -245,13 +293,13 @@ public final class BountyService {
      *
      * @param killer        the killing player, or null for a non-PvP death
      * @param livesBefore   victim lives before this death
-     * @param victimBanned  whether this death banned the victim
      * @param overrideActive whether a global PvP event is running; such kills pay nothing
-     * @param retaliation   whether the killer was retaliating; such kills do not make the killer wanted
+     * @param defense       whether the killer was retaliating or fighting back against the victim's first hit;
+     *                      such kills do not make the killer wanted
      */
     public synchronized void onDeath(
             @NotNull UUID victim, @Nullable UUID killer, @Nullable String victimName, int livesBefore,
-            boolean victimBanned, boolean overrideActive, boolean retaliation, @NotNull Instant now,
+            boolean overrideActive, boolean defense, @NotNull Instant now,
             @NotNull LifeConfig config
     ) {
         BountySettings s = settings.get();
@@ -271,8 +319,8 @@ public final class BountyService {
         Bounty bounty = bounties.get(victim);
         // A bounty on a red target is frozen; the issuer can never claim their own bounty
         if (bounty != null && livesBefore > 1 && !bounty.issuer().equals(killer) && !onCooldown(killer, victim, now)) {
-            removeBounty(victim);
             payStake(killer, bounty, config);
+            removeBounty(victim);
             Instant until = now.plusSeconds(s.pairCooldownSeconds());
             cooldowns.put(killer + ":" + victim, until);
             repository.saveCooldown(killer, victim, until);
@@ -284,7 +332,7 @@ public final class BountyService {
             notifications.sendMessage(killer, config.formatMessage("bounty.wanted-claimed", "player", name));
         }
 
-        if (retaliation) {
+        if (defense) {
             return;
         }
         KillStreak previous = killStreaks.get(killer);
@@ -295,7 +343,7 @@ public final class BountyService {
         repository.saveStreak(killer, current);
         int streak = current.kills();
         int killerLives = profileCache.getCachedProfile(killer).map(LifeProfile::getLives).orElse(0);
-        boolean triggered = streak >= s.wantedStreak() || victimBanned || livesBefore < killerLives;
+        boolean triggered = streak >= s.wantedStreak() || livesBefore < killerLives;
         if (triggered && !wantedSeconds.containsKey(killer)) {
             wantedSeconds.put(killer, 0L);
             repository.saveWanted(killer, 0L);
@@ -318,8 +366,8 @@ public final class BountyService {
         if (bounty != null && lives > 1) {
             long survived = bounty.survivedSeconds() + 1;
             if (survived >= duration) {
-                removeBounty(player);
                 payStake(player, bounty, config);
+                removeBounty(player);
                 notifications.sendMessage(player, config.formatMessage("bounty.survived"));
                 notifications.sendMessage(bounty.issuer(), config.formatMessage("bounty.survived-issuer"));
             } else {
@@ -393,6 +441,7 @@ public final class BountyService {
         refreshName(target);
     }
 
+    /** Pays out before the bounty is removed, so a failed payout keeps the bounty instead of losing the stake. */
     private void payStake(UUID recipient, Bounty bounty, LifeConfig config) {
         if (!rewards.give(recipient, bounty.items(), 100, bounty.xpLevels())) {
             LOGGER.warn("Bounty stake on {} could not be given to offline player {}", bounty.target(), recipient);

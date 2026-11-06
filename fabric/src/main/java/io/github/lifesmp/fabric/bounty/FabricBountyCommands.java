@@ -8,7 +8,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.Bounty;
-import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.domain.service.BountyService;
 import io.github.lifesmp.core.storage.LifeProfileCache;
 import io.github.lifesmp.fabric.util.FabricMessageFormatter;
@@ -27,11 +26,9 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -141,7 +138,6 @@ public final class FabricBountyCommands {
         player.sendSystemMessage(FabricMessageFormatter.parse(raw));
     }
 
-    /** Buyout defaults to 150% of the XP stake, so a forgotten argument does not make the bounty cheap. */
     private int set(CommandSourceStack source, String targetName, int xp, int lives, int buyout) {
         ServerPlayer issuer = source.getPlayer();
         if (issuer == null) {
@@ -152,7 +148,7 @@ public final class FabricBountyCommands {
             send(issuer, config.get().formatMessage("gift.player-offline", "player", targetName));
             return 0;
         }
-        int price = buyout >= 0 ? buyout : Math.max(bounties.getSettings().minBuyout(), xp * 3 / 2);
+        int price = bounties.buyoutOrDefault(buyout, xp);
         BountyService.Status status = bounties.validatePlace(
                 issuer.getUUID(), target.getUUID(), xp, lives, price, issuer.experienceLevel);
         if (status != BountyService.Status.OK) {
@@ -221,34 +217,7 @@ public final class FabricBountyCommands {
     }
 
     private void showInfo(CommandSourceStack source, UUID uuid, String name) {
-        LifeConfig cfg = config.get();
-        long duration = bounties.getSettings().durationSeconds();
-        Bounty bounty = bounties.getBounty(uuid).orElse(null);
-        boolean wanted = bounties.isWanted(uuid);
-        List<String> lines = new ArrayList<>();
-        if (bounty == null && !wanted) {
-            lines.add(cfg.formatMessage("bounty.info-none", "player", name));
-        }
-        if (bounty != null) {
-            int stacks = ItemBlobs.decode(bounty.items(), source.registryAccess()).size();
-            lines.add(cfg.formatMessage("bounty.info", Map.of(
-                    "player", name,
-                    "issuer", bounty.issuerName(),
-                    "xp", String.valueOf(bounty.xpLevels()),
-                    "lives", String.valueOf(bounty.lives()),
-                    "items", String.valueOf(stacks),
-                    "buyout", String.valueOf(bounty.buyoutLevels()),
-                    "remaining", cfg.formatDuration(Duration.ofSeconds(Math.max(0, duration - bounty.survivedSeconds())))
-            )));
-            if (profiles.getCachedProfile(uuid).map(LifeProfile::getLives).orElse(2) <= 1) {
-                lines.add(cfg.formatMessage("bounty.info-frozen"));
-            }
-        }
-        if (wanted) {
-            long left = Math.max(0, duration - bounties.getWantedSurvivedSeconds(uuid));
-            lines.add(cfg.formatMessage("bounty.info-wanted", Map.of(
-                    "player", name, "remaining", cfg.formatDuration(Duration.ofSeconds(left)))));
-        }
-        lines.forEach(line -> source.sendSuccess(() -> FabricMessageFormatter.parse(line), false));
+        bounties.infoMessages(uuid, name, blob -> ItemBlobs.decode(blob, source.registryAccess()).size(), config.get())
+                .forEach(line -> source.sendSuccess(() -> FabricMessageFormatter.parse(line), false));
     }
 }

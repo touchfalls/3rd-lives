@@ -4,6 +4,8 @@
 package io.github.lifesmp.fabric.util;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.SharedConstants;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -47,5 +49,15 @@ public final class McCompat {
     /** A listed survival TAB entry with zero latency. */
     public static ClientboundPlayerInfoUpdatePacket.Entry tabEntry(UUID uuid, GameProfile profile, Component displayName) {
         return new ClientboundPlayerInfoUpdatePacket.Entry(uuid, profile, true, 0, GameType.SURVIVAL, displayName, true, 0, null);
+    }
+
+    /** Data version of the running game, stored with saved item data so it can be upgraded later. */
+    public static int dataVersion() {
+        return SharedConstants.getCurrentVersion().dataVersion().version();
+    }
+
+    /** An int from an NBT compound, 0 when missing. */
+    public static int getInt(CompoundTag tag, String key) {
+        return tag.getIntOr(key, 0);
     }
 }

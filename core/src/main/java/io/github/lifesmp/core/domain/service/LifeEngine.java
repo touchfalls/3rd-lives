@@ -337,13 +337,14 @@ public final class LifeEngine {
             }
         }
         profileCache.markDirty(victimUuid);
-        // Read before the victim's retaliation records are cleared below
-        boolean retaliation = killerUuid != null && pvpPolicyEngine.isRetaliationAllowed(killerUuid, victimUuid, now);
+        // Read before the victim's retaliation and fight records are cleared below
+        boolean defense = killerUuid != null && (pvpPolicyEngine.isRetaliationAllowed(killerUuid, victimUuid, now)
+                || pvpPolicyEngine.isDefending(killerUuid, victimUuid, now));
         pvpPolicyEngine.clearRetaliationForPlayer(victimUuid);
         BountyService bounties = bountyService;
         if (bounties != null) {
-            bounties.onDeath(victimUuid, killerUuid, profile.getLastName(), livesBefore, remainingLives <= 0,
-                    arenaService.isGlobalPvpOverrideActive(now), retaliation, now, config);
+            bounties.onDeath(victimUuid, killerUuid, profile.getLastName(), livesBefore,
+                    arenaService.isGlobalPvpOverrideActive(now), defense, now, config);
         }
 
         if (remainingLives <= 0) {

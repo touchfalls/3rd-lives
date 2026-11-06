@@ -37,6 +37,12 @@ public final class PvPPolicyEngine {
      */
     private final Map<UUID, Map<UUID, Instant>> retaliationRegistry = new ConcurrentHashMap<>();
 
+    /** Who threw the first hit in an ongoing fight between two non-red players, until the fight goes quiet. */
+    private record Fight(UUID aggressor, Instant expiresAt) {}
+
+    /** Key: both UUIDs in sorted order, so A-vs-B and B-vs-A are the same fight. */
+    private final Map<String, Fight> fights = new ConcurrentHashMap<>();
+
     /**
      * Evaluates whether a PvP damage event is permitted.
      *
@@ -104,6 +110,7 @@ public final class PvPPolicyEngine {
         // Case 2: Attacker is Non-Red (>= 2 lives)
         if (victimLives >= 2) {
             // Non-red vs Non-red (2 vs 2, 3 vs 3, 2 vs 3) is freely permitted
+            recordHit(attackerUuid, victimUuid, now, config.getRetaliationWindowSeconds());
             return PvPDecision.allowNormal();
         }
 
@@ -166,6 +173,27 @@ public final class PvPPolicyEngine {
         return true;
     }
 
+    private static String fightKey(UUID a, UUID b) {
+        return a.compareTo(b) < 0 ? a + ":" + b : b + ":" + a;
+    }
+
+    /** Remembers the first attacker of a fight; every hit keeps the fight open for another window. */
+    private void recordHit(UUID attacker, UUID victim, Instant now, long windowSeconds) {
+        Instant expiresAt = now.plusSeconds(Math.max(1L, windowSeconds));
+        fights.compute(fightKey(attacker, victim), (k, fight) ->
+                fight == null || now.isAfter(fight.expiresAt())
+                        ? new Fight(attacker, expiresAt)
+                        : new Fight(fight.aggressor(), expiresAt));
+    }
+
+    /**
+     * Whether {@code defender} is fighting back: {@code aggressor} threw the first hit of their ongoing fight.
+     */
+    public boolean isDefending(@NotNull UUID defender, @NotNull UUID aggressor, @NotNull Instant now) {
+        Fight fight = fights.get(fightKey(defender, aggressor));
+        return fight != null && !now.isAfter(fight.expiresAt()) && fight.aggressor().equals(aggressor);
+    }
+
     /**
      * Clears all retaliation records for a specific player (e.g. on death or disconnect).
      *
@@ -176,6 +204,8 @@ public final class PvPPolicyEngine {
         for (Map<UUID, Instant> map : retaliationRegistry.values()) {
             map.remove(playerUuid);
         }
+        String id = playerUuid.toString();
+        fights.keySet().removeIf(key -> key.startsWith(id) || key.endsWith(id));
     }
 
     /**
@@ -184,6 +214,7 @@ public final class PvPPolicyEngine {
      * @param now current instant
      */
     public void pruneExpired(@NotNull Instant now) {
+        fights.values().removeIf(fight -> now.isAfter(fight.expiresAt()));
         Iterator<Map.Entry<UUID, Map<UUID, Instant>>> registryIterator = retaliationRegistry.entrySet().iterator();
         while (registryIterator.hasNext()) {
             Map.Entry<UUID, Map<UUID, Instant>> entry = registryIterator.next();

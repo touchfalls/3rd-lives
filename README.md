@@ -145,7 +145,7 @@ A bounty ends in one of four ways:
 
 A bounty on a red player (1 life) is frozen. Nobody can claim it, and its timer stops until the target has more lives again. The PvP rules do not change.
 
-**Wanted.** The server marks a player as wanted when they kill `bounty.wanted-streak` players in a row (default 3) without dying, kill a player who is then banned, or kill a player who has fewer lives than they do. A kill made while retaliating does not count. The player who kills a wanted player gains a life. Wanted status ends when the wanted player dies, or after `bounty.duration-hours` hours online. A player can have both a bounty and the wanted status. Whoever kills them then gets both rewards.
+**Wanted.** The server marks a player as wanted when they kill `bounty.wanted-streak` players in a row (default 3) without dying, kill a player who is then banned, or kill a player who has fewer lives than they do. A kill made while retaliating does not count. A streak ends when the player dies, or `bounty.streak-reset-days` days (default 7) after its first kill; it is kept across server restarts. The player who kills a wanted player gains a life. Wanted status ends when the wanted player dies, or after `bounty.duration-hours` hours online. A player can have both a bounty and the wanted status. Whoever kills them then gets both rewards.
 
 Bounties and wanted status do not pay out for deaths in an arena, deaths during `/life event pvp-override`, or deaths not caused by a player. Players with a bounty or wanted status have `bounty.icon` (default `☠`) after their name in TAB, and on Paper also above the head. `/bounty info <player>` shows the stake, the issuer, the time left and the buyout price.
 
@@ -215,6 +215,7 @@ The file is created with default values on first start. Both files use the same 
 | `bounty.pair-cooldown-hours` | `24.0` | Hours before the same hunter can claim a bounty on the same target again |
 | `bounty.max-active-per-issuer` | `1` | Active bounties one player may place |
 | `bounty.wanted-streak` | `3` | PvP kills in a row without dying that make a player wanted |
+| `bounty.streak-reset-days` | `7.0` | Days after the first kill of a streak when the streak starts over |
 | `bounty.icon` | `☠` | Shown after the name of a hunted player |
 | `messages.<key>` | empty | Overrides for single messages of the selected language |
 

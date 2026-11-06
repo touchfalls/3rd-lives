@@ -75,5 +75,7 @@ bounty:
   max-active-per-issuer: 1
   # PvP kills in a row without dying that make a player wanted
   wanted-streak: 3
+  # Days after the first kill of a streak when the streak starts over (a death also ends it)
+  streak-reset-days: 7.0
   # Shown after the name of a player with a bounty or wanted status
   icon: "☠"

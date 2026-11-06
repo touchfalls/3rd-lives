@@ -6,6 +6,7 @@ package io.github.lifesmp.core.domain.service;
 import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.model.Bounty;
+import io.github.lifesmp.core.domain.model.KillStreak;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.ports.BountyRepository;
 import io.github.lifesmp.core.ports.NotificationService;
@@ -68,8 +69,7 @@ public final class BountyService {
     private final Map<UUID, Bounty> bounties = new HashMap<>();
     private final Map<UUID, Long> wantedSeconds = new HashMap<>();
     private final Map<String, Instant> cooldowns = new HashMap<>();
-    // shortcut: kill streaks live in memory and reset on restart, persist them if players abuse restarts
-    private final Map<UUID, Integer> killStreaks = new HashMap<>();
+    private final Map<UUID, KillStreak> killStreaks = new HashMap<>();
 
     public BountyService(
             @NotNull BountyRepository repository,
@@ -100,6 +100,7 @@ public final class BountyService {
         snapshot.bounties().forEach(b -> bounties.put(b.target(), b));
         wantedSeconds.putAll(snapshot.wantedSeconds());
         cooldowns.putAll(snapshot.cooldowns());
+        killStreaks.putAll(snapshot.streaks());
         LOGGER.info("Loaded {} bounties and {} wanted players", bounties.size(), wantedSeconds.size());
     }
 
@@ -254,7 +255,9 @@ public final class BountyService {
             @NotNull LifeConfig config
     ) {
         BountySettings s = settings.get();
-        killStreaks.remove(victim);
+        if (killStreaks.remove(victim) != null) {
+            repository.deleteStreak(victim);
+        }
         boolean victimWasWanted = wantedSeconds.remove(victim) != null;
         if (victimWasWanted) {
             repository.deleteWanted(victim);
@@ -284,7 +287,13 @@ public final class BountyService {
         if (retaliation) {
             return;
         }
-        int streak = killStreaks.merge(killer, 1, Integer::sum);
+        KillStreak previous = killStreaks.get(killer);
+        KillStreak current = previous == null || previous.isExpired(now, s.streakResetSeconds())
+                ? new KillStreak(1, now)
+                : new KillStreak(previous.kills() + 1, previous.startedAt());
+        killStreaks.put(killer, current);
+        repository.saveStreak(killer, current);
+        int streak = current.kills();
         int killerLives = profileCache.getCachedProfile(killer).map(LifeProfile::getLives).orElse(0);
         boolean triggered = streak >= s.wantedStreak() || victimBanned || livesBefore < killerLives;
         if (triggered && !wantedSeconds.containsKey(killer)) {
@@ -341,7 +350,6 @@ public final class BountyService {
 
     /** Writes the survival timers of a leaving player. */
     public synchronized void onQuit(@NotNull UUID player) {
-        killStreaks.remove(player);
         Bounty bounty = bounties.get(player);
         if (bounty != null) {
             repository.saveBounty(bounty);
@@ -362,6 +370,14 @@ public final class BountyService {
     /** Prunes expired hunter cooldowns. */
     public synchronized void pruneExpired(@NotNull Instant now) {
         cooldowns.values().removeIf(until -> !now.isBefore(until));
+        long resetSeconds = settings.get().streakResetSeconds();
+        killStreaks.entrySet().removeIf(e -> {
+            boolean expired = e.getValue().isExpired(now, resetSeconds);
+            if (expired) {
+                repository.deleteStreak(e.getKey());
+            }
+            return expired;
+        });
     }
 
     // ---- internals ----

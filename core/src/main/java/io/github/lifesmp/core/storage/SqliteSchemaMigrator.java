@@ -19,7 +19,7 @@ import java.util.Objects;
 public final class SqliteSchemaMigrator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqliteSchemaMigrator.class);
-    private static final int CURRENT_VERSION = 5;
+    private static final int CURRENT_VERSION = 6;
 
     private final DatabaseManager databaseManager;
 
@@ -65,6 +65,12 @@ public final class SqliteSchemaMigrator {
                 applyV5(conn);
                 recordVersion(conn, 5);
                 LOGGER.info("Applied migration V5: created bounties, wanted and bounty_cooldowns tables");
+            }
+
+            if (current < 6) {
+                applyV6(conn);
+                recordVersion(conn, 6);
+                LOGGER.info("Applied migration V6: created kill_streaks table");
             }
 
             LOGGER.info("Database schema is up to date at version {}", CURRENT_VERSION);
@@ -197,6 +203,18 @@ public final class SqliteSchemaMigrator {
                         target TEXT NOT NULL,
                         until INTEGER NOT NULL,
                         PRIMARY KEY (hunter, target)
+                    );
+                    """);
+        }
+    }
+
+    private void applyV6(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS kill_streaks (
+                        uuid TEXT PRIMARY KEY,
+                        kills INTEGER NOT NULL,
+                        started_at INTEGER NOT NULL
                     );
                     """);
         }

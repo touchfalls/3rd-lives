@@ -34,6 +34,7 @@
     "pair-cooldown-hours": 24.0,
     "max-active-per-issuer": 1,
     "wanted-streak": 3,
+    "streak-reset-days": 7.0,
     "icon": "☠"
   },
   "messages": {}

@@ -4,6 +4,7 @@
 package io.github.lifesmp.core.storage;
 
 import io.github.lifesmp.core.domain.model.Bounty;
+import io.github.lifesmp.core.domain.model.KillStreak;
 import io.github.lifesmp.core.ports.BountyRepository;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -68,6 +69,7 @@ public final class SqliteBountyRepository implements BountyRepository {
             List<Bounty> bounties = new ArrayList<>();
             Map<UUID, Long> wanted = new HashMap<>();
             Map<String, Instant> cooldowns = new HashMap<>();
+            Map<UUID, KillStreak> streaks = new HashMap<>();
             try (Connection conn = databaseManager.getConnection()) {
                 try (PreparedStatement ps = conn.prepareStatement("""
                         SELECT target, issuer, issuer_name, items, xp, lives, buyout, survived_seconds, created_at
@@ -103,11 +105,18 @@ public final class SqliteBountyRepository implements BountyRepository {
                         }
                     }
                 }
+                try (PreparedStatement ps = conn.prepareStatement("SELECT uuid, kills, started_at FROM kill_streaks;");
+                     ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        streaks.put(UUID.fromString(rs.getString("uuid")),
+                                new KillStreak(rs.getInt("kills"), Instant.ofEpochMilli(rs.getLong("started_at"))));
+                    }
+                }
             } catch (SQLException e) {
                 LOGGER.error("Failed to load bounties", e);
                 throw new RuntimeException("Error loading bounties", e);
             }
-            return new Snapshot(bounties, wanted, cooldowns);
+            return new Snapshot(bounties, wanted, cooldowns, streaks);
         }, ioExecutor);
     }
 
@@ -158,6 +167,29 @@ public final class SqliteBountyRepository implements BountyRepository {
     public CompletableFuture<Void> deleteWanted(@NotNull UUID player) {
         return write("delete wanted " + player, conn -> {
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM wanted WHERE uuid = ?;")) {
+                ps.setString(1, player.toString());
+                ps.executeUpdate();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Void> saveStreak(@NotNull UUID player, @NotNull KillStreak streak) {
+        return write("save kill streak " + player, conn -> {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT OR REPLACE INTO kill_streaks (uuid, kills, started_at) VALUES (?, ?, ?);")) {
+                ps.setString(1, player.toString());
+                ps.setInt(2, streak.kills());
+                ps.setLong(3, streak.startedAt().toEpochMilli());
+                ps.executeUpdate();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteStreak(@NotNull UUID player) {
+        return write("delete kill streak " + player, conn -> {
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM kill_streaks WHERE uuid = ?;")) {
                 ps.setString(1, player.toString());
                 ps.executeUpdate();
             }

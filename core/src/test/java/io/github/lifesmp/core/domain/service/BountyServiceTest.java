@@ -5,6 +5,7 @@ package io.github.lifesmp.core.domain.service;
 
 import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
+import io.github.lifesmp.core.domain.model.KillStreak;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.ports.ArenaRepository;
 import io.github.lifesmp.core.ports.BountyRepository;
@@ -39,6 +40,8 @@ class BountyServiceTest {
     private LifeProfileCache cache;
     private RewardGateway rewards;
     private BountyService bounties;
+    private BountyRepository repo;
+    private NotificationService notifications;
     private LifeEngine engine;
     private PvPPolicyEngine pvp;
     private ArenaService arenas;
@@ -57,15 +60,15 @@ class BountyServiceTest {
         when(players.savePlayer(any())).thenReturn(CompletableFuture.completedFuture(null));
         cache = new LifeProfileCache(players);
 
-        BountyRepository repo = mock(BountyRepository.class);
+        repo = mock(BountyRepository.class);
         when(repo.loadAll()).thenReturn(CompletableFuture.completedFuture(
-                new BountyRepository.Snapshot(List.of(), Map.of(), Map.of())));
+                new BountyRepository.Snapshot(List.of(), Map.of(), Map.of(), Map.of())));
         when(repo.flush()).thenReturn(CompletableFuture.completedFuture(null));
 
         rewards = mock(RewardGateway.class);
         when(rewards.give(any(), any(), anyInt(), anyInt())).thenReturn(true);
         settings = BountySettings.DEFAULTS;
-        NotificationService notifications = mock(NotificationService.class);
+        notifications = mock(NotificationService.class);
         bounties = new BountyService(repo, cache, notifications, rewards, () -> settings);
         bounties.load();
 
@@ -247,5 +250,41 @@ class BountyServiceTest {
             bounties.tickOnline(hunter, config);
         }
         assertThat(bounties.isWanted(hunter)).isFalse();
+    }
+
+    @Test
+    void streakStartsOverAfterResetPeriod() {
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+        join(a, 3);
+        join(b, 3);
+        kill(a, hunter);
+        kill(b, hunter);
+        now = now.plusSeconds(settings.streakResetSeconds());
+        kill(issuer, hunter);
+        assertThat(bounties.isWanted(hunter)).isFalse();
+        verify(repo).saveStreak(hunter, new KillStreak(1, now));
+    }
+
+    @Test
+    void streakSurvivesRestart() {
+        when(repo.loadAll()).thenReturn(CompletableFuture.completedFuture(new BountyRepository.Snapshot(
+                List.of(), Map.of(), Map.of(), Map.of(hunter, new KillStreak(2, now)))));
+        BountyService restarted = new BountyService(repo, cache, notifications, rewards, () -> settings);
+        restarted.load();
+        engine.setBountyService(restarted);
+        kill(issuer, hunter);
+        assertThat(restarted.isWanted(hunter)).isTrue();
+    }
+
+    @Test
+    void quitKeepsStreakAndDeathEndsIt() {
+        UUID a = UUID.randomUUID();
+        join(a, 3);
+        kill(a, hunter);
+        bounties.onQuit(hunter);
+        verify(repo, never()).deleteStreak(hunter);
+        kill(hunter, null);
+        verify(repo).deleteStreak(hunter);
     }
 }

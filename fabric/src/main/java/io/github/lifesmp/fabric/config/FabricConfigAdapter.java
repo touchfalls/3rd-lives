@@ -161,6 +161,7 @@ public final class FabricConfigAdapter {
                     getDouble(b, "pair-cooldown-hours", d.pairCooldownHours()),
                     getInt(b, "max-active-per-issuer", d.maxActivePerIssuer()),
                     getInt(b, "wanted-streak", d.wantedStreak()),
+                    getDouble(b, "streak-reset-days", d.streakResetDays()),
                     getString(b, "icon", d.icon())
             );
         } catch (Exception e) {

@@ -104,6 +104,7 @@ public final class PaperConfigAdapter {
                 config.getDouble("bounty.pair-cooldown-hours", d.pairCooldownHours()),
                 config.getInt("bounty.max-active-per-issuer", d.maxActivePerIssuer()),
                 config.getInt("bounty.wanted-streak", d.wantedStreak()),
+                config.getDouble("bounty.streak-reset-days", d.streakResetDays()),
                 config.getString("bounty.icon", d.icon())
         );
     }

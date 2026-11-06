@@ -5,6 +5,7 @@ package io.github.lifesmp.core.storage;
 
 import io.github.lifesmp.core.domain.model.Arena;
 import io.github.lifesmp.core.domain.model.Bounty;
+import io.github.lifesmp.core.domain.model.KillStreak;
 import io.github.lifesmp.core.ports.BountyRepository;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import org.junit.jupiter.api.AfterEach;
@@ -63,6 +64,9 @@ class SqliteRepositoryIntegrationTest {
         repo.deleteBounty(other);
         repo.saveWanted(hunter, 42L);
         repo.saveCooldown(hunter, target, Instant.now().plusSeconds(3600));
+        repo.saveStreak(hunter, new KillStreak(2, created));
+        repo.saveStreak(other, new KillStreak(1, created));
+        repo.deleteStreak(other);
         repo.flush().join();
 
         BountyRepository.Snapshot snapshot = new SqliteBountyRepository(databaseManager).loadAll().join();
@@ -73,6 +77,7 @@ class SqliteRepositoryIntegrationTest {
         assertThat(loaded.survivedSeconds()).isEqualTo(120L);
         assertThat(snapshot.wantedSeconds()).containsEntry(hunter, 42L);
         assertThat(snapshot.cooldowns()).containsKey(hunter + ":" + target);
+        assertThat(snapshot.streaks()).containsOnly(java.util.Map.entry(hunter, new KillStreak(2, created)));
     }
 
     @Test

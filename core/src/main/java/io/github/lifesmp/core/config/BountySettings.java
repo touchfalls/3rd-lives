@@ -17,6 +17,7 @@ import org.jetbrains.annotations.NotNull;
  * @param pairCooldownHours   hours before the same hunter can claim a bounty on the same target again
  * @param maxActivePerIssuer  active bounties one issuer may hold
  * @param wantedStreak        PvP kills in a row without dying that make a player wanted
+ * @param streakResetDays     days after the first kill of a streak when the streak starts over
  * @param icon                text shown after the name of a hunted player in TAB and above the head
  */
 public record BountySettings(
@@ -29,11 +30,12 @@ public record BountySettings(
         double pairCooldownHours,
         int maxActivePerIssuer,
         int wantedStreak,
+        double streakResetDays,
         @NotNull String icon
 ) {
 
     public static final BountySettings DEFAULTS =
-            new BountySettings(true, 12.0, 10, 75, 5, 5, 24.0, 1, 3, "☠");
+            new BountySettings(true, 12.0, 10, 75, 5, 5, 24.0, 1, 3, 7.0, "☠");
 
     public BountySettings {
         durationHours = Math.max(0.01, durationHours);
@@ -44,10 +46,15 @@ public record BountySettings(
         pairCooldownHours = Math.max(0.0, pairCooldownHours);
         maxActivePerIssuer = Math.max(1, maxActivePerIssuer);
         wantedStreak = Math.max(1, wantedStreak);
+        streakResetDays = Math.max(0.01, streakResetDays);
     }
 
     public long durationSeconds() {
         return Math.round(durationHours * 3600.0);
+    }
+
+    public long streakResetSeconds() {
+        return Math.round(streakResetDays * 86400.0);
     }
 
     public long pairCooldownSeconds() {

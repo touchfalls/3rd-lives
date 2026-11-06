@@ -19,7 +19,7 @@ import java.util.Objects;
 public final class SqliteSchemaMigrator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqliteSchemaMigrator.class);
-    private static final int CURRENT_VERSION = 4;
+    private static final int CURRENT_VERSION = 5;
 
     private final DatabaseManager databaseManager;
 
@@ -59,6 +59,12 @@ public final class SqliteSchemaMigrator {
                 applyV4(conn);
                 recordVersion(conn, 4);
                 LOGGER.info("Applied migration V4: added pardon_notice column to players");
+            }
+
+            if (current < 5) {
+                applyV5(conn);
+                recordVersion(conn, 5);
+                LOGGER.info("Applied migration V5: created bounties, wanted and bounty_cooldowns tables");
             }
 
             LOGGER.info("Database schema is up to date at version {}", CURRENT_VERSION);
@@ -161,6 +167,38 @@ public final class SqliteSchemaMigrator {
                 }
             }
             stmt.execute("ALTER TABLE players ADD COLUMN pardon_notice INTEGER NOT NULL DEFAULT 0;");
+        }
+    }
+
+    private void applyV5(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS bounties (
+                        target TEXT PRIMARY KEY,
+                        issuer TEXT NOT NULL,
+                        issuer_name TEXT NOT NULL,
+                        items BLOB,
+                        xp INTEGER NOT NULL,
+                        lives INTEGER NOT NULL,
+                        buyout INTEGER NOT NULL,
+                        survived_seconds INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL
+                    );
+                    """);
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS wanted (
+                        uuid TEXT PRIMARY KEY,
+                        survived_seconds INTEGER NOT NULL DEFAULT 0
+                    );
+                    """);
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS bounty_cooldowns (
+                        hunter TEXT NOT NULL,
+                        target TEXT NOT NULL,
+                        until INTEGER NOT NULL,
+                        PRIMARY KEY (hunter, target)
+                    );
+                    """);
         }
     }
 }

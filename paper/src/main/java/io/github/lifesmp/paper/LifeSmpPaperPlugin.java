@@ -3,11 +3,14 @@
 
 package io.github.lifesmp.paper;
 
+import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
 import io.github.lifesmp.core.domain.service.*;
 import io.github.lifesmp.core.ports.EconomyIntegration;
 import io.github.lifesmp.core.ports.PlatformScheduler;
 import io.github.lifesmp.core.storage.*;
+import io.github.lifesmp.paper.bounty.PaperBountyCommands;
+import io.github.lifesmp.paper.bounty.PaperRewardGateway;
 import io.github.lifesmp.paper.command.PaperCommandRegistrar;
 import io.github.lifesmp.paper.config.PaperConfigAdapter;
 import io.github.lifesmp.paper.listener.*;
@@ -32,6 +35,9 @@ import java.time.Instant;
 public final class LifeSmpPaperPlugin extends JavaPlugin {
 
     private volatile LifeConfig lifeConfig;
+    private volatile BountySettings bountySettings;
+    private BountyService bountyService;
+    private PaperBountyCommands bountyCommands;
 
     private DatabaseManager databaseManager;
     private SqlitePlayerRepository playerRepository;
@@ -58,6 +64,7 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         this.lifeConfig = PaperConfigAdapter.load(getConfig());
+        this.bountySettings = PaperConfigAdapter.loadBounty(getConfig());
 
         // Initialize SQLite database
         Path dataFolder = getDataFolder().toPath();
@@ -96,6 +103,14 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
                 this::getLifeConfig,
                 deadTabService
         );
+
+        this.bountyService = new BountyService(new SqliteBountyRepository(databaseManager), profileCache,
+                notificationService, new PaperRewardGateway(), () -> bountySettings);
+        this.bountyService.load();
+        this.lifeEngine.setBountyService(bountyService);
+        scoreboardManager.setHuntedIcon(uuid -> bountyService.isHunted(uuid) ? bountySettings.icon() : null);
+        this.bountyCommands = new PaperBountyCommands(this, bountyService);
+        this.bountyCommands.register();
 
         // Register listeners
         var pm = Bukkit.getPluginManager();
@@ -143,6 +158,7 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
         LifeConfig oldConfig = this.lifeConfig;
         LifeConfig newConfig = PaperConfigAdapter.load(getConfig());
         this.lifeConfig = newConfig;
+        this.bountySettings = PaperConfigAdapter.loadBounty(getConfig());
 
         // Proportional progress preservation
         regenerationService.adjustProfilesOnConfigReload(
@@ -178,6 +194,12 @@ public final class LifeSmpPaperPlugin extends JavaPlugin {
             autosaveTask.cancel();
         }
 
+        if (bountyCommands != null) {
+            bountyCommands.closeOpenMenus();
+        }
+        if (bountyService != null) {
+            bountyService.shutdown();
+        }
         if (deadTabService != null) {
             deadTabService.shutdown();
         }

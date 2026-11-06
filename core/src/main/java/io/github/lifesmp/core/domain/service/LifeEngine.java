@@ -40,6 +40,7 @@ public final class LifeEngine {
     private final NotificationService notificationService;
     private volatile Supplier<LifeConfig> configSupplier;
     private volatile DeadTabService deadTabService;
+    private volatile BountyService bountyService;
 
     // Idempotency: debouncing multiple death events firing in the same tick / window
     private final Map<UUID, Instant> lastDeathTimestamps = new ConcurrentHashMap<>();
@@ -114,6 +115,15 @@ public final class LifeEngine {
 
     public void setDeadTabService(@Nullable DeadTabService deadTabService) {
         this.deadTabService = deadTabService;
+    }
+
+    public void setBountyService(@Nullable BountyService bountyService) {
+        this.bountyService = bountyService;
+    }
+
+    @Nullable
+    public BountyService getBountyService() {
+        return bountyService;
     }
 
     @Nullable
@@ -311,9 +321,11 @@ public final class LifeEngine {
         });
 
         int remainingLives;
+        int livesBefore;
         Instant bannedUntil = null;
         // Lock so an autosave snapshot never sees the lost life without the ban.
         synchronized (profile) {
+            livesBefore = profile.getLives();
             remainingLives = profile.decrementLives();
             profile.resetOnlineSeconds();
             if (playerName != null && !playerName.isBlank()) {
@@ -325,7 +337,14 @@ public final class LifeEngine {
             }
         }
         profileCache.markDirty(victimUuid);
+        // Read before the victim's retaliation records are cleared below
+        boolean retaliation = killerUuid != null && pvpPolicyEngine.isRetaliationAllowed(killerUuid, victimUuid, now);
         pvpPolicyEngine.clearRetaliationForPlayer(victimUuid);
+        BountyService bounties = bountyService;
+        if (bounties != null) {
+            bounties.onDeath(victimUuid, killerUuid, profile.getLastName(), livesBefore, remainingLives <= 0,
+                    arenaService.isGlobalPvpOverrideActive(now), retaliation, now, config);
+        }
 
         if (remainingLives <= 0) {
             profileCache.saveProfileImmediately(profile);
@@ -390,6 +409,10 @@ public final class LifeEngine {
      */
     public void handlePlayerQuit(@NotNull UUID uuid, @NotNull Instant now) {
         giftService.onPlayerQuit(uuid);
+        BountyService bounties = bountyService;
+        if (bounties != null) {
+            bounties.onQuit(uuid);
+        }
         regenerationService.onPlayerQuit(uuid);
         pvpPolicyEngine.clearRetaliationForPlayer(uuid);
         lastDeathTimestamps.remove(uuid);
@@ -424,6 +447,10 @@ public final class LifeEngine {
                 );
             }
         });
+        BountyService bounties = bountyService;
+        if (bounties != null && !regenerationService.isAfk(uuid, now, config.getAfkSeconds())) {
+            bounties.tickOnline(uuid, config);
+        }
     }
 
     /**
@@ -445,6 +472,10 @@ public final class LifeEngine {
     public void pruneExpired(@NotNull Instant now) {
         pvpPolicyEngine.pruneExpired(now);
         giftService.pruneExpired(now);
+        BountyService bounties = bountyService;
+        if (bounties != null) {
+            bounties.pruneExpired(now);
+        }
         lastDeathTimestamps.entrySet().removeIf(entry ->
                 Duration.between(entry.getValue(), now).toMillis() > 1000L);
     }

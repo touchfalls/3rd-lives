@@ -3,10 +3,14 @@
 
 package io.github.lifesmp.fabric;
 
+import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
+import io.github.lifesmp.fabric.bounty.FabricBountyCommands;
+import io.github.lifesmp.fabric.bounty.FabricRewardGateway;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.domain.model.PvPDecision;
 import io.github.lifesmp.core.domain.service.ArenaService;
+import io.github.lifesmp.core.domain.service.BountyService;
 import io.github.lifesmp.core.domain.service.DeadTabService;
 import io.github.lifesmp.core.domain.service.GiftService;
 import io.github.lifesmp.core.domain.service.LifeEngine;
@@ -17,6 +21,7 @@ import io.github.lifesmp.core.ports.PlatformScheduler;
 import io.github.lifesmp.core.storage.DatabaseManager;
 import io.github.lifesmp.core.storage.LifeProfileCache;
 import io.github.lifesmp.core.storage.SqliteArenaRepository;
+import io.github.lifesmp.core.storage.SqliteBountyRepository;
 import io.github.lifesmp.core.storage.SqlitePlayerRepository;
 import io.github.lifesmp.core.storage.SqliteSchemaMigrator;
 import io.github.lifesmp.fabric.command.FabricCommandRegistrar;
@@ -36,6 +41,7 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -63,6 +69,9 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
 
     private Path configPath;
     private volatile LifeConfig lifeConfig;
+    private volatile BountySettings bountySettings;
+    private BountyService bountyService;
+    private FabricBountyCommands bountyCommands;
 
     private DatabaseManager databaseManager;
     private SqlitePlayerRepository playerRepository;
@@ -104,6 +113,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
             configDir.toFile().mkdirs();
             this.configPath = configDir.resolve("config.json");
             this.lifeConfig = FabricConfigAdapter.loadOrCreate(configPath);
+            this.bountySettings = FabricConfigAdapter.loadBounty(configPath);
 
             // Initialize SQLite
             Path dbFile = configDir.resolve("lifesmp.db");
@@ -146,6 +156,11 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
                     notificationService
             );
             this.lifeEngine.setDeadTabService(this.deadTabService);
+            this.bountyService = new BountyService(new SqliteBountyRepository(databaseManager), profileCache,
+                    notificationService, new FabricRewardGateway(() -> bridge.getServer()), () -> bountySettings);
+            this.bountyService.load();
+            this.lifeEngine.setBountyService(bountyService);
+            this.bountyCommands = new FabricBountyCommands(bountyService, profileCache, () -> lifeConfig, () -> bridge.getServer());
 
             registerLifecycleEvents();
             registerConnectionEvents();
@@ -226,6 +241,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayer player = handler.player;
             if (player != null) {
+                FabricBountyCommands.closeStakeMenu(player);
                 UUID uuid = player.getUUID();
                 Instant now = Instant.now();
                 // Vanilla broadcasts "left the game" after this event and colors the name from the cached profile,
@@ -359,6 +375,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
                     }
             );
             registrar.register(dispatcher);
+            bountyCommands.register(dispatcher);
         });
     }
 
@@ -400,6 +417,7 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
         LifeConfig oldConfig = this.lifeConfig;
         LifeConfig newConfig = FabricConfigAdapter.loadOrCreate(configPath);
         this.lifeConfig = newConfig;
+        this.bountySettings = FabricConfigAdapter.loadBounty(configPath);
 
         regenerationService.adjustProfilesOnConfigReload(
                 profileCache.getAllCachedProfiles(),
@@ -431,6 +449,14 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
         if (regenTask != null) regenTask.cancel();
         if (autosaveTask != null) autosaveTask.cancel();
 
+        MinecraftServer srv = bridge != null ? bridge.getServer() : null;
+        if (srv != null) {
+            srv.getPlayerList().getPlayers().forEach(FabricBountyCommands::closeStakeMenu);
+        }
+        if (bountyService != null) {
+            bountyService.shutdown();
+        }
+
         if (deadTabService != null) {
             deadTabService.shutdown();
         }
@@ -454,6 +480,10 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
     }
 
     @NotNull
+    public BountySettings getBountySettings() {
+        return bountySettings;
+    }
+
     public LifeEngine getLifeEngine() {
         return lifeEngine;
     }

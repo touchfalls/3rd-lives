@@ -13,6 +13,8 @@ import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
+import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * Manages scoreboard teams for coloring nametags above player heads,
@@ -26,7 +28,12 @@ public final class PaperScoreboardManager {
     private static final String TEAM_GRAY = "life_0_gray";
     public static final String TEAM_DEAD = "zz_dead";
 
+    /** Teams of hunted players carry this suffix after the base team name. */
+    private static final String HUNTED_SUFFIX = "_b";
+
     private final Scoreboard scoreboard;
+    // Bounty icon of a player, or null when nobody hunts them
+    private volatile Function<UUID, String> huntedIcon = uuid -> null;
 
     public PaperScoreboardManager() {
         this.scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
@@ -48,6 +55,10 @@ public final class PaperScoreboardManager {
         }
         team.color(color);
         team.prefix(prefix);
+    }
+
+    public void setHuntedIcon(@NotNull Function<UUID, String> huntedIcon) {
+        this.huntedIcon = huntedIcon;
     }
 
     public void ensureDeadTeam() {
@@ -105,7 +116,18 @@ public final class PaperScoreboardManager {
             case GRAY -> TEAM_GRAY;
         };
 
-        Team team = scoreboard.getTeam(targetTeamName);
+        String icon = huntedIcon.apply(player.getUniqueId());
+        Component suffix = icon == null ? Component.empty() : Component.text(" " + icon, NamedTextColor.DARK_RED);
+        Team team;
+        if (icon == null) {
+            team = scoreboard.getTeam(targetTeamName);
+        } else {
+            // A separate team per color, because a suffix applies to the whole team
+            String huntedName = targetTeamName + HUNTED_SUFFIX;
+            registerOrUpdateTeam(huntedName, namedColor, Component.text("● ", namedColor));
+            team = scoreboard.getTeam(huntedName);
+            team.suffix(suffix);
+        }
         if (team != null && !team.hasEntry(player.getName())) {
             removeFromAllTeams(player.getName());
             team.addEntry(player.getName());
@@ -113,7 +135,8 @@ public final class PaperScoreboardManager {
 
         // Apply Tab-list display name
         Component tabName = Component.text("● ", namedColor)
-                .append(Component.text(player.getName(), namedColor));
+                .append(Component.text(player.getName(), namedColor))
+                .append(suffix);
         player.playerListName(tabName);
     }
 
@@ -129,5 +152,9 @@ public final class PaperScoreboardManager {
         if (r != null) r.removeEntry(entry);
         if (gr != null) gr.removeEntry(entry);
         if (dead != null) dead.removeEntry(entry);
+        for (String base : new String[]{TEAM_GREEN, TEAM_GOLD, TEAM_RED, TEAM_GRAY}) {
+            Team hunted = scoreboard.getTeam(base + HUNTED_SUFFIX);
+            if (hunted != null) hunted.removeEntry(entry);
+        }
     }
 }

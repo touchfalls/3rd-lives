@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Bounties. `/bounty set <player> <xp> [lives] [buyout]` puts items, XP levels and lives on another player's head. The stake goes to the player who kills the target in PvP, or to the target if they survive `bounty.duration-hours` online hours or buy the bounty out with `/bounty buyout`. The issuer can take part of the stake back with `/bounty cancel`. A bounty on a red player is frozen. See the Bounties section of the README.
+- Wanted status. A player who kills 3 players in a row, kills a player who is then banned, or kills a player who has fewer lives becomes wanted, and whoever kills them gains a life.
+- A `bounty` section in the configuration and `bounty.*` messages in all languages.
+- Database schema version 5 with the `bounties`, `wanted` and `bounty_cooldowns` tables.
+
 ## [1.1.3] - 2026-11-06
 
 ### Added

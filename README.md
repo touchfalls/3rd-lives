@@ -26,6 +26,7 @@ Red players are protected from being hunted: players with more lives cannot atta
 - A timed global PvP override for events.
 - Regeneration based on online time, paused while the player is AFK.
 - Banned players shown as gray `[DEAD]` entries at the bottom of the TAB list.
+- Bounties: players put items, XP levels and lives on another player's head; the server marks rampaging players as wanted.
 - Admin commands to pardon, reset or set lives.
 - Messages in English, Russian, French, Italian and Spanish, each overridable with MiniMessage; reload without restart.
 - SQLite storage, written off the main thread.
@@ -126,6 +127,27 @@ Download the jar for your platform from [Releases](https://github.com/touchfalls
 6. Edit `config/lifesmp/config.json` if needed and run `/life reload`.
 
 On both platforms the log also shows `Initialized SQLite database at <path>` with the absolute path of the database file.
+### Bounties
+
+A player can put a price on another player's head. The stake is held by the server until the bounty ends.
+
+1. The issuer runs `/bounty set <player> <xp> [lives] [buyout]`. A chest opens; the items placed in it become part of the stake, and the bounty is placed when the chest closes. The target must be online.
+2. The stake is taken at once: the items, `xp` XP levels (at least `bounty.min-xp`) and `lives` lives. The issuer must keep at least one life. `bounty.tax-percent` of the XP is burned.
+3. `buyout` is the price in XP levels the target pays to buy the bounty out (at least `bounty.min-buyout`; default 150% of `xp`).
+4. One bounty per target, `bounty.max-active-per-issuer` active bounties per issuer, and no bounty on yourself. The issuer's name is always shown to the target.
+
+A bounty ends in one of four ways:
+
+- **Claimed.** A player kills the target in PvP and gets the whole stake. Lives above `max-lives` are burned. The issuer cannot claim their own bounty, and the same hunter cannot claim a bounty on the same target again for `bounty.pair-cooldown-hours` hours.
+- **Survived.** The target spends `bounty.duration-hours` hours online and not AFK (default 12) and takes the stake. Time spent banned does not count.
+- **Bought out.** The target runs `/bounty buyout`, pays the buyout price (those levels are burned) and takes the stake.
+- **Cancelled.** The issuer runs `/bounty cancel` and gets `bounty.cancel-refund-percent` (default 75%) of the stake back, rounded down for each item stack, the XP and the lives.
+
+A bounty on a red player (1 life) is frozen. Nobody can claim it, and its timer stops until the target has more lives again. The PvP rules do not change.
+
+**Wanted.** The server marks a player as wanted when they kill `bounty.wanted-streak` players in a row (default 3) without dying, kill a player who is then banned, or kill a player who has fewer lives than they do. A kill made while retaliating does not count. The player who kills a wanted player gains a life. Wanted status ends when the wanted player dies, or after `bounty.duration-hours` hours online. A player can have both a bounty and the wanted status. Whoever kills them then gets both rewards.
+
+Bounties and wanted status do not pay out for deaths in an arena, deaths during `/life event pvp-override`, or deaths not caused by a player. Players with a bounty or wanted status have `bounty.icon` (default `☠`) after their name in TAB, and on Paper also above the head. `/bounty info <player>` shows the stake, the issuer, the time left and the buyout price.
 
 ## Commands and permissions
 
@@ -137,6 +159,10 @@ On Paper, admin commands require the `lifesmp.admin` permission (default: operat
 | `/life help` | List available commands | none | everyone |
 | `/life gift <player>` | Offer one of your lives to an online player | none | everyone |
 | `/life accept` | Accept a pending life gift | none | everyone |
+| `/bounty set <player> <xp> [lives] [buyout]` | Put a bounty on an online player; opens a chest for the stake items | none | everyone |
+| `/bounty cancel` | Cancel your bounty and get part of the stake back | none | everyone |
+| `/bounty buyout` | Buy out the bounty on your head | none | everyone |
+| `/bounty info <player>` | Show the bounty and wanted status of a player | none | everyone |
 | `/life reload` | Reload the configuration without resetting player progress | `lifesmp.admin` | operators |
 | `/life set <player> <1-3>` | Set a player's lives | `lifesmp.admin` | operators |
 | `/life pardon <player>` | End a death ban early; the player gets 1 life | `lifesmp.admin` | operators |
@@ -180,6 +206,16 @@ The file is created with default values on first start. Both files use the same 
 | `dead-tab.max-entries` | `50` | Maximum number of dead entries shown |
 | `dead-tab.sort-last` | `true` | Place dead entries below all living players |
 | `colors.3`, `colors.2`, `colors.1`, `colors.0` | `#55FF55`, `#FFAA00`, `#FF5555`, `#AAAAAA` | Name color for 3, 2, 1 and 0 lives |
+| `bounty.enabled` | `true` | Turn bounties and wanted status on or off |
+| `bounty.duration-hours` | `12.0` | Online hours a target must survive to take the stake; also how long wanted status lasts |
+| `bounty.tax-percent` | `10` | Share of the staked XP burned when a bounty is placed |
+| `bounty.cancel-refund-percent` | `75` | Share of the stake returned on `/bounty cancel` |
+| `bounty.min-xp` | `5` | XP levels every bounty must stake |
+| `bounty.min-buyout` | `5` | Lowest buyout price in XP levels |
+| `bounty.pair-cooldown-hours` | `24.0` | Hours before the same hunter can claim a bounty on the same target again |
+| `bounty.max-active-per-issuer` | `1` | Active bounties one player may place |
+| `bounty.wanted-streak` | `3` | PvP kills in a row without dying that make a player wanted |
+| `bounty.icon` | `☠` | Shown after the name of a hunted player |
 | `messages.<key>` | empty | Overrides for single messages of the selected language |
 
 Values below a safe minimum are raised to it: for example `max-lives` and `restored-lives-after-ban` are at least 1.
@@ -282,6 +318,8 @@ Replace the jar and restart. The database schema is migrated automatically and e
 - French, Italian and Spanish translations have not yet been reviewed by native speakers. Corrections are welcome.
 - `/life set` accepts only values from 1 to 3, regardless of `max-lives`.
 - On Fabric, `/lives` and `/lsmp` aliases are not registered.
+- On Fabric, the bounty icon is shown only in TAB, not above the head.
+- Bounty stake items are stored in the platform's own format. A database moved between Paper and Fabric loses the stake items of active bounties.
 
 ## For developers
 

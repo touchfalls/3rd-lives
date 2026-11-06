@@ -24,5 +24,17 @@
     "1": "#FF5555",
     "0": "#AAAAAA"
   },
+  "bounty": {
+    "enabled": true,
+    "duration-hours": 12.0,
+    "tax-percent": 10,
+    "cancel-refund-percent": 75,
+    "min-xp": 5,
+    "min-buyout": 5,
+    "pair-cooldown-hours": 24.0,
+    "max-active-per-issuer": 1,
+    "wanted-streak": 3,
+    "icon": "☠"
+  },
   "messages": {}
 }

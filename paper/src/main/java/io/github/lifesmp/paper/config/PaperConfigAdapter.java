@@ -3,6 +3,7 @@
 
 package io.github.lifesmp.paper.config;
 
+import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -86,6 +87,24 @@ public final class PaperConfigAdapter {
                 deadTabSortLast,
                 colors,
                 messages
+        );
+    }
+
+    /** Reads the {@code bounty} section; missing keys keep their defaults. */
+    @NotNull
+    public static BountySettings loadBounty(@NotNull FileConfiguration config) {
+        BountySettings d = BountySettings.DEFAULTS;
+        return new BountySettings(
+                config.getBoolean("bounty.enabled", d.enabled()),
+                config.getDouble("bounty.duration-hours", d.durationHours()),
+                config.getInt("bounty.tax-percent", d.taxPercent()),
+                config.getInt("bounty.cancel-refund-percent", d.cancelRefundPercent()),
+                config.getInt("bounty.min-xp", d.minXp()),
+                config.getInt("bounty.min-buyout", d.minBuyout()),
+                config.getDouble("bounty.pair-cooldown-hours", d.pairCooldownHours()),
+                config.getInt("bounty.max-active-per-issuer", d.maxActivePerIssuer()),
+                config.getInt("bounty.wanted-streak", d.wantedStreak()),
+                config.getString("bounty.icon", d.icon())
         );
     }
 }

@@ -6,6 +6,7 @@ package io.github.lifesmp.fabric.config;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.lifesmp.core.config.BountySettings;
 import io.github.lifesmp.core.config.LifeConfig;
 import org.jetbrains.annotations.NotNull;
 
@@ -138,6 +139,33 @@ public final class FabricConfigAdapter {
                 colors,
                 messages
         );
+    }
+
+    /** Reads the {@code bounty} object of config.json; missing keys, or a missing file, keep the defaults. */
+    @NotNull
+    public static BountySettings loadBounty(@NotNull Path configPath) {
+        BountySettings d = BountySettings.DEFAULTS;
+        try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
+            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            if (!root.has("bounty") || !root.get("bounty").isJsonObject()) {
+                return d;
+            }
+            JsonObject b = root.getAsJsonObject("bounty");
+            return new BountySettings(
+                    !b.has("enabled") || b.get("enabled").isJsonNull() ? d.enabled() : b.get("enabled").getAsBoolean(),
+                    getDouble(b, "duration-hours", d.durationHours()),
+                    getInt(b, "tax-percent", d.taxPercent()),
+                    getInt(b, "cancel-refund-percent", d.cancelRefundPercent()),
+                    getInt(b, "min-xp", d.minXp()),
+                    getInt(b, "min-buyout", d.minBuyout()),
+                    getDouble(b, "pair-cooldown-hours", d.pairCooldownHours()),
+                    getInt(b, "max-active-per-issuer", d.maxActivePerIssuer()),
+                    getInt(b, "wanted-streak", d.wantedStreak()),
+                    getString(b, "icon", d.icon())
+            );
+        } catch (Exception e) {
+            return d;
+        }
     }
 
     private static String getString(JsonObject obj, String key, String def) {

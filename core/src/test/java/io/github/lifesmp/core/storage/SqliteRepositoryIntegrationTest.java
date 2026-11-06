@@ -4,6 +4,8 @@
 package io.github.lifesmp.core.storage;
 
 import io.github.lifesmp.core.domain.model.Arena;
+import io.github.lifesmp.core.domain.model.Bounty;
+import io.github.lifesmp.core.ports.BountyRepository;
 import io.github.lifesmp.core.domain.model.LifeProfile;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +46,33 @@ class SqliteRepositoryIntegrationTest {
         if (playerRepository != null) playerRepository.close();
         if (arenaRepository != null) arenaRepository.close();
         if (databaseManager != null) databaseManager.close();
+    }
+
+    @Test
+    @DisplayName("Bounties, wanted players and cooldowns survive a restart; a delete never loses to an earlier save")
+    void bountiesSurviveRestart() {
+        SqliteBountyRepository repo = new SqliteBountyRepository(databaseManager);
+        UUID target = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        UUID hunter = UUID.randomUUID();
+        Instant created = Instant.parse("2026-03-20T12:00:00Z");
+        Bounty bounty = new Bounty(target, hunter, "Hunter", new byte[]{7, 8}, 9, 1, 20, 120L, created);
+
+        repo.saveBounty(bounty);
+        repo.saveBounty(new Bounty(other, hunter, "Hunter", null, 5, 0, 5, 0L, created));
+        repo.deleteBounty(other);
+        repo.saveWanted(hunter, 42L);
+        repo.saveCooldown(hunter, target, Instant.now().plusSeconds(3600));
+        repo.flush().join();
+
+        BountyRepository.Snapshot snapshot = new SqliteBountyRepository(databaseManager).loadAll().join();
+        assertThat(snapshot.bounties()).hasSize(1);
+        Bounty loaded = snapshot.bounties().get(0);
+        assertThat(loaded.target()).isEqualTo(target);
+        assertThat(loaded.items()).containsExactly(7, 8);
+        assertThat(loaded.survivedSeconds()).isEqualTo(120L);
+        assertThat(snapshot.wantedSeconds()).containsEntry(hunter, 42L);
+        assertThat(snapshot.cooldowns()).containsKey(hunter + ":" + target);
     }
 
     @Test

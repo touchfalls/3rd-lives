@@ -7,7 +7,9 @@ import io.github.lifesmp.core.domain.model.LifeProfile;
 import io.github.lifesmp.core.domain.model.PlayerColor;
 import io.github.lifesmp.fabric.LifeSmpFabricServer;
 import io.github.lifesmp.fabric.util.McCompat;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -42,8 +44,12 @@ public abstract class ServerPlayerMixin {
         int lives = profile != null ? profile.getLives() : server.getLifeConfig().getMaxLives();
         PlayerColor color = PlayerColor.fromLives(lives);
 
-        Component tabComponent = Component.literal(self.getScoreboardName())
+        MutableComponent tabComponent = Component.literal(self.getScoreboardName())
                 .withStyle(style -> style.withColor(TextColor.fromRgb(color.getRgb())));
+        var bounties = server.getLifeEngine().getBountyService();
+        if (bounties != null && bounties.isHunted(self.getUUID())) {
+            tabComponent.append(Component.literal(" " + server.getBountySettings().icon()).withStyle(ChatFormatting.DARK_RED));
+        }
         cir.setReturnValue(tabComponent);
     }
 

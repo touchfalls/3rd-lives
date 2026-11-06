@@ -55,3 +55,25 @@ colors:
 # The full list of keys is in the README. Example:
 # messages:
 #   gift.sent: "{prefix}<green>Life offered to <yellow>{player}</yellow>.</green>"
+
+# Bounties: players put a price on someone's head, and the server marks rampaging players as wanted
+bounty:
+  enabled: true
+  # Online hours (not AFK) the target must survive to take the stake. Also how long "wanted" lasts.
+  duration-hours: 12.0
+  # Share of the staked XP that is burned when a bounty is placed
+  tax-percent: 10
+  # Share of the stake returned when the issuer cancels
+  cancel-refund-percent: 75
+  # XP levels every bounty must stake
+  min-xp: 5
+  # Lowest buyout price in XP levels the issuer may set
+  min-buyout: 5
+  # Hours before the same hunter can claim a bounty on the same target again
+  pair-cooldown-hours: 24.0
+  # Active bounties one player may place at a time
+  max-active-per-issuer: 1
+  # PvP kills in a row without dying that make a player wanted
+  wanted-streak: 3
+  # Shown after the name of a player with a bounty or wanted status
+  icon: "☠"

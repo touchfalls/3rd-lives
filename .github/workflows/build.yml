@@ -54,10 +54,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Fabric 26.x jar
+      - name: Upload Fabric 26.2 jar
         uses: actions/upload-artifact@v4
         with:
-          name: lifesmp-fabric-26
-          path: dist/fabric-26/
+          name: lifesmp-fabric-26.2
+          path: dist/fabric-26.2/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Fabric 26.3 jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifesmp-fabric-26.3
+          path: dist/fabric-26.3/
           if-no-files-found: error
           retention-days: 14

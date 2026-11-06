@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 touchfalls
 #
-# Publishes the Paper jar and the two Fabric jars (1.21.1, 26.3) of a release to Modrinth as three versions.
+# Publishes the Paper jar and the three Fabric jars (1.21.1, 26.2, 26.3) of a release to Modrinth as four versions.
 #
 #   scripts/publish-modrinth.sh <version> <modrinth-project-id> [--dry-run]
 #
@@ -20,11 +20,12 @@ TOKEN_FILE="${MODRINTH_TOKEN_FILE:-$HOME/.config/authsecured/modrinth-token}"
 NOTES="$ROOT/docs/release-notes/$VERSION.md"
 PAPER_JAR="$ROOT/dist/paper/lifesmp-$VERSION.jar"
 FABRIC_JAR="$ROOT/dist/fabric/lifesmp-fabric-$VERSION.jar"
-FABRIC_26_JAR="$ROOT/dist/fabric-26/lifesmp-fabric-26-$VERSION.jar"
+FABRIC_262_JAR="$ROOT/dist/fabric-26.2/lifesmp-fabric-26.2-$VERSION.jar"
+FABRIC_263_JAR="$ROOT/dist/fabric-26.3/lifesmp-fabric-26.3-$VERSION.jar"
 FABRIC_API_PROJECT_ID="P7dR8mSH"
 USER_AGENT="touchfalls/3rd-lives publish-modrinth.sh"
 
-for f in "$NOTES" "$PAPER_JAR" "$FABRIC_JAR" "$FABRIC_26_JAR"; do
+for f in "$NOTES" "$PAPER_JAR" "$FABRIC_JAR" "$FABRIC_262_JAR" "$FABRIC_263_JAR"; do
   [ -f "$f" ] || { echo "missing: $f (run ./gradlew clean dist first)" >&2; exit 1; }
 done
 
@@ -60,12 +61,14 @@ PY
 FABRIC_API_DEP="[{\"project_id\":\"$FABRIC_API_PROJECT_ID\",\"dependency_type\":\"required\"}]"
 PAPER_DATA="$(build_data Paper '["paper","purpur"]' '[]' '["1.21.1","26.2","26.3"]')"
 FABRIC_DATA="$(build_data 'Fabric 1.21.1' '["fabric"]' "$FABRIC_API_DEP" '["1.21.1"]')"
-FABRIC_26_DATA="$(build_data 'Fabric 26.3' '["fabric"]' "$FABRIC_API_DEP" '["26.3"]')"
+FABRIC_262_DATA="$(build_data 'Fabric 26.2' '["fabric"]' "$FABRIC_API_DEP" '["26.2"]')"
+FABRIC_263_DATA="$(build_data 'Fabric 26.3' '["fabric"]' "$FABRIC_API_DEP" '["26.3"]')"
 
 if [ "$DRY_RUN" = "--dry-run" ]; then
   echo "== Paper ($PAPER_JAR)"; echo "$PAPER_DATA"
   echo "== Fabric 1.21.1 ($FABRIC_JAR)"; echo "$FABRIC_DATA"
-  echo "== Fabric 26.3 ($FABRIC_26_JAR)"; echo "$FABRIC_26_DATA"
+  echo "== Fabric 26.2 ($FABRIC_262_JAR)"; echo "$FABRIC_262_DATA"
+  echo "== Fabric 26.3 ($FABRIC_263_JAR)"; echo "$FABRIC_263_DATA"
   exit 0
 fi
 
@@ -86,5 +89,6 @@ upload() { # $1=data json, $2=jar
 
 upload "$PAPER_DATA" "$PAPER_JAR"
 upload "$FABRIC_DATA" "$FABRIC_JAR"
-upload "$FABRIC_26_DATA" "$FABRIC_26_JAR"
+upload "$FABRIC_262_DATA" "$FABRIC_262_JAR"
+upload "$FABRIC_263_DATA" "$FABRIC_263_JAR"
 echo "Published $VERSION to Modrinth project $PROJECT_ID"

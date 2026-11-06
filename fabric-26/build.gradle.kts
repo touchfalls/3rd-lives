@@ -2,6 +2,10 @@
 // Copyright (C) 2026 touchfalls
 
 // Minecraft 26.x is unobfuscated: no mappings and no remapping. Shares sources with :fabric.
+// Used by :fabric-26.2 and :fabric-26.3 (see settings.gradle.kts); the Minecraft version comes from the project name.
+val mc = project.name.removePrefix("fabric-")
+val fabricApi = mapOf("26.2" to "0.161.0+26.2", "26.3" to "0.165.0+26.3").getValue(mc)
+
 plugins {
     `java-library`
     id("net.fabricmc.fabric-loom") version "1.19.3"
@@ -15,11 +19,11 @@ java {
 
 sourceSets {
     main {
-        java.srcDirs("../fabric/src/main/java", "../fabric/src/mc26_2/java")
-        resources.srcDir("../fabric/src/main/resources")
+        java.srcDirs(rootProject.file("fabric/src/main/java"), rootProject.file("fabric/src/mc26_2/java"))
+        resources.srcDir(rootProject.file("fabric/src/main/resources"))
     }
     test {
-        java.srcDir("../fabric/src/test/java")
+        java.srcDir(rootProject.file("fabric/src/test/java"))
     }
 }
 
@@ -27,9 +31,9 @@ dependencies {
     implementation(project(":core"))
     include(project(":core"))
 
-    minecraft("com.mojang:minecraft:26.3")
+    minecraft("com.mojang:minecraft:$mc")
     implementation("net.fabricmc:fabric-loader:0.20.1")
-    implementation("net.fabricmc.fabric-api:fabric-api:0.165.0+26.3")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApi")
 
     include("com.zaxxer:HikariCP:5.1.0")
     include("org.xerial:sqlite-jdbc:3.45.3.0")
@@ -55,7 +59,7 @@ loom {
 }
 
 tasks.processResources {
-    val props = mapOf("version" to project.version, "minecraft" to "~26.3", "java" to "25", "loader" to "0.18.4")
+    val props = mapOf("version" to project.version, "minecraft" to "~$mc", "java" to "25", "loader" to "0.18.4")
     inputs.properties(props)
     filesMatching("fabric.mod.json") {
         expand(props)
@@ -67,7 +71,7 @@ tasks.processResources {
 }
 
 tasks.jar {
-    archiveBaseName.set("lifesmp-fabric-26")
+    archiveBaseName.set("lifesmp-fabric-$mc")
     archiveVersion.set(project.version.toString())
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 

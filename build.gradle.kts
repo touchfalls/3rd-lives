@@ -6,6 +6,7 @@ plugins {
 }
 
 val modVersion: String = property("mod_version") as String
+val fabric26Versions = listOf("26.2", "26.3")
 
 allprojects {
     group = "io.github.lifesmp"
@@ -23,7 +24,7 @@ subprojects {
     apply(plugin = "java")
 
     extensions.configure<JavaPluginExtension> {
-        // Minecraft 1.21.1 target: Java 21 (:fabric-26 overrides it with Java 25)
+        // Minecraft 1.21.1 target: Java 21 (:fabric-26.x overrides it with Java 25)
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(21))
         }
@@ -45,18 +46,16 @@ subprojects {
 tasks.register("dist") {
     group = "distribution"
     description = "Assembles Paper and Fabric distribution jars into dist/ directory"
-    dependsOn(":paper:shadowJar", ":fabric:remapJar", ":fabric-26:jar")
+    dependsOn(":paper:shadowJar", ":fabric:remapJar", fabric26Versions.map { ":fabric-$it:jar" })
 
     doLast {
         val distDir = layout.projectDirectory.dir("dist")
         val paperDist = distDir.dir("paper")
         val fabricDist = distDir.dir("fabric")
-        val fabric26Dist = distDir.dir("fabric-26")
 
         distDir.asFile.deleteRecursively()
         paperDist.asFile.mkdirs()
         fabricDist.asFile.mkdirs()
-        fabric26Dist.asFile.mkdirs()
 
         val paperLibsDir = project(":paper").layout.buildDirectory.dir("libs").get().asFile
         val paperJar = paperLibsDir.resolve("lifesmp-$modVersion.jar").let {
@@ -65,14 +64,16 @@ tasks.register("dist") {
         val fabricJar = project(":fabric").tasks.named<org.gradle.jvm.tasks.Jar>("remapJar").get().archiveFile.get().asFile
 
         paperJar.copyTo(paperDist.file("lifesmp-$modVersion.jar").asFile, overwrite = true)
-        val fabric26Jar = project(":fabric-26").tasks.named<org.gradle.jvm.tasks.Jar>("jar").get().archiveFile.get().asFile
         fabricJar.copyTo(fabricDist.file(fabricJar.name).asFile, overwrite = true)
-        fabric26Jar.copyTo(fabric26Dist.file(fabric26Jar.name).asFile, overwrite = true)
+        val fabric26Jars = fabric26Versions.map { mc ->
+            val jar = project(":fabric-$mc").tasks.named<org.gradle.jvm.tasks.Jar>("jar").get().archiveFile.get().asFile
+            jar.copyTo(distDir.dir("fabric-$mc").file(jar.name).asFile, overwrite = true)
+        }
 
         logger.lifecycle("Dist artifacts assembled:")
         logger.lifecycle("  - Paper:  ${paperDist.file(paperJar.name).asFile.relativeTo(rootDir)}")
         logger.lifecycle("  - Fabric: ${fabricDist.file(fabricJar.name).asFile.relativeTo(rootDir)}")
-        logger.lifecycle("  - Fabric 26.x: ${fabric26Dist.file(fabric26Jar.name).asFile.relativeTo(rootDir)}")
+        fabric26Jars.forEach { logger.lifecycle("  - Fabric 26.x: ${it.relativeTo(rootDir)}") }
     }
 }
 
@@ -86,8 +87,7 @@ tasks.register("verifyJars") {
         val paperJar = distDir.dir("paper").file("lifesmp-$modVersion.jar").asFile
         val fabricJars = listOf(
             distDir.dir("fabric").file("lifesmp-fabric-$modVersion.jar").asFile,
-            distDir.dir("fabric-26").file("lifesmp-fabric-26-$modVersion.jar").asFile
-        )
+        ) + fabric26Versions.map { distDir.dir("fabric-$it").file("lifesmp-fabric-$it-$modVersion.jar").asFile }
 
         if (!paperJar.exists()) {
             throw GradleException("Verification failed: Paper jar does not exist at ${paperJar.absolutePath}")

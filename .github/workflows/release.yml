@@ -51,11 +51,11 @@ jobs:
           mkdir -p release
           PAPER_JAR=$(find dist/paper -maxdepth 1 -name '*.jar' | head -n 1)
           FABRIC_JAR=$(find dist/fabric -maxdepth 1 -name '*.jar' | head -n 1)
-          FABRIC_26_JAR=$(find dist/fabric-26 -maxdepth 1 -name '*.jar' | head -n 1)
-          test -n "$PAPER_JAR" && test -n "$FABRIC_JAR" && test -n "$FABRIC_26_JAR"
+          test -n "$PAPER_JAR" && test -n "$FABRIC_JAR"
           cp "$PAPER_JAR" "release/lifesmp-paper-${VERSION}.jar"
           cp "$FABRIC_JAR" "release/lifesmp-fabric-1.21.1-${VERSION}.jar"
-          cp "$FABRIC_26_JAR" "release/lifesmp-fabric-26.3-${VERSION}.jar"
+          # dist/fabric-26.x/ jars are already named lifesmp-fabric-26.x-<version>.jar
+          cp dist/fabric-26.2/lifesmp-fabric-26.2-${VERSION}.jar dist/fabric-26.3/lifesmp-fabric-26.3-${VERSION}.jar release/
           ls -l release
 
       - name: Create GitHub Release
@@ -66,5 +66,6 @@ jobs:
           files: |
             release/lifesmp-paper-${{ env.VERSION }}.jar
             release/lifesmp-fabric-1.21.1-${{ env.VERSION }}.jar
+            release/lifesmp-fabric-26.2-${{ env.VERSION }}.jar
             release/lifesmp-fabric-26.3-${{ env.VERSION }}.jar
           fail_on_unmatched_files: true

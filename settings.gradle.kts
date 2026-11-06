@@ -19,4 +19,10 @@ rootProject.name = "lifesmp"
 include("core")
 include("paper")
 include("fabric")
-include("fabric-26")
+// fabric-26/build.gradle.kts builds every Minecraft 26.x version; the project name carries the version
+for (mc in listOf("26.2", "26.3")) {
+    include("fabric-$mc")
+    // Holds only build output, so Git does not keep the folder
+    project(":fabric-$mc").projectDir = file("fabric-26/$mc").apply { mkdirs() }
+    project(":fabric-$mc").buildFileName = "../build.gradle.kts"
+}

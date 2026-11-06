@@ -53,14 +53,14 @@ This checklist tracks platform API dependencies, Mojang mappings, binary packagi
 - [x] **Jar-in-Jar (JiJ) Bundling of HikariCP and sqlite-jdbc**
   - **What:** Dependencies included via `include(...)` in `fabric/build.gradle.kts`.
   - **Where:** `fabric/build.gradle.kts:18-19`.
-  - **Verification:** Verified by Gradle task `verifyJars`: unpacks and checks nested jars in `dist/fabric/lifesmp-fabric-1.1.2.jar`.
+  - **Verification:** Verified by Gradle task `verifyJars`: unpacks and checks nested jars in `dist/fabric/lifesmp-fabric-1.1.3.jar`.
 - [x] **Mixin Accessor for `ClientboundPlayerInfoUpdatePacket`**
   - **What:** Accessor mixin mapping `entries` field in `ClientboundPlayerInfoUpdatePacket` to allow injecting custom dead entries without mock `ServerPlayer` entities.
   - **Where:** `io.github.lifesmp.fabric.mixin.ClientboundPlayerInfoUpdatePacketAccessor`.
-  - **Verification:** Verified by `lifesmp.refmap.json`: remapped to Intermediary `field_12369:Ljava/util/List;`. On 26.x (`:fabric-26`) the game is unobfuscated and no refmap is used.
-- [x] **Minecraft 26.3 build (`:fabric-26`)**
-  - **What:** The `:fabric` sources compiled against Minecraft 26.3 and Fabric API 0.165.0+26.3 with Java 25. API differences are in `McCompat` (`fabric/src/mc1_21_1/java`, `fabric/src/mc26_2/java`).
-  - **Verification:** Verified by `./gradlew :fabric-26:build` (all Fabric tests run against 26.3) and `verifyJars`.
+  - **Verification:** Verified by `lifesmp.refmap.json`: remapped to Intermediary `field_12369:Ljava/util/List;`. On 26.x (`:fabric-26.2`, `:fabric-26.3`) the game is unobfuscated and no refmap is used.
+- [x] **Minecraft 26.2 and 26.3 builds (`:fabric-26.2`, `:fabric-26.3`)**
+  - **What:** The `:fabric` sources compiled against Minecraft 26.2 (Fabric API 0.161.0+26.2) and 26.3 (Fabric API 0.165.0+26.3) with Java 25, both from `fabric-26/build.gradle.kts`. API differences are in `McCompat` (`fabric/src/mc1_21_1/java`, `fabric/src/mc26_2/java`).
+  - **Verification:** Verified by `./gradlew test` (all Fabric tests run against 1.21.1, 26.2 and 26.3) and `verifyJars`.
 - [ ] **Real-server check on 26.3**
   - **What:** Start a Fabric 26.3 server with `lifesmp-fabric-26.3-<version>.jar` (and Paper 26.3 with the Paper jar), join, die until banned, and check the `[DEAD]` TAB entry, colors and commands.
   - **Status:** Startup checked on Paper 26.3 build 236 and Fabric Loader (latest stable) with Fabric API 0.165.0+26.3 (Java 25): the plugin and the mod load, the V1-V4 migrations run and shutdown is clean, with no errors from Life SMP. Not yet checked with a player joining: deaths, bans, colors and the `[DEAD]` TAB entry.
@@ -105,5 +105,5 @@ Run the full verification suite on a clean environment:
 Expected output:
 - All unit and integration tests pass (91/91).
 - Both artifacts assembled and verified:
-  - `dist/paper/lifesmp-1.1.2.jar`
-  - `dist/fabric/lifesmp-fabric-1.1.2.jar`
+  - `dist/paper/lifesmp-1.1.3.jar`
+  - `dist/fabric/lifesmp-fabric-1.1.3.jar`

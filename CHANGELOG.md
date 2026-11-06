@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-11-06
+
+### Added
+- A Fabric jar for Minecraft 26.2 again (`lifesmp-fabric-26.2-<version>.jar`), next to the 26.3 one. Releases now have Fabric jars for 1.21.1, 26.2 and 26.3; the Paper jar covers all three.
+
 ## [1.1.2] - 2026-11-01
 
 ### Added

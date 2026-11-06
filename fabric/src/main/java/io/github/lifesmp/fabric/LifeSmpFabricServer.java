@@ -48,7 +48,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Server-only Fabric entrypoint for Life SMP.
@@ -195,6 +197,10 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
     }
 
     private void registerConnectionEvents() {
+        // INIT runs before vanilla broadcasts "joined the game", which colors the name from the cached profile.
+        ServerPlayConnectionEvents.INIT.register((handler, server) ->
+                lifeEngine.getProfileCache().getOrLoadProfile(handler.player.getUUID(), lifeConfig.getMaxLives(), Instant.now()).join());
+
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer player = handler.player;
             UUID uuid = player.getUUID();
@@ -220,7 +226,12 @@ public final class LifeSmpFabricServer implements DedicatedServerModInitializer,
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayer player = handler.player;
             if (player != null) {
-                lifeEngine.handlePlayerQuit(player.getUUID(), Instant.now());
+                UUID uuid = player.getUUID();
+                Instant now = Instant.now();
+                // Vanilla broadcasts "left the game" after this event and colors the name from the cached profile,
+                // so the quit handling, which evicts the profile, waits one tick.
+                CompletableFuture.delayedExecutor(50L, TimeUnit.MILLISECONDS, server)
+                        .execute(() -> lifeEngine.handlePlayerQuit(uuid, now));
                 if (deadTabService != null) {
                     deadTabService.getDeadEntry(player.getUUID()).ifPresent(entry -> {
                         tabPresenter.showDead(entry);

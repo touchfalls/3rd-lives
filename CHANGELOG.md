@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The Fabric 26.x jar is now built for 26.3 instead of 26.2. Use 1.1.1 on Fabric 26.2.
 
+### Fixed
+- Fabric: "joined the game" and "left the game" showed the name in the 3-lives color for players with fewer lives. Vanilla builds both messages while Life SMP had no profile in memory: the profile now loads before the join message, and the quit handling, which removes it from memory, runs one tick after the leave message.
+
 ## [1.1.1] - 2026-10-27
 
 ### Fixed

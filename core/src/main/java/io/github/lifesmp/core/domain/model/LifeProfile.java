@@ -32,6 +32,7 @@ public final class LifeProfile {
     private final AtomicBoolean giftRegenActive;
     private final AtomicReference<String> lastName;
     private final AtomicBoolean pardonNoticePending = new AtomicBoolean(false);
+    private final AtomicInteger livesSpent = new AtomicInteger(0);
 
     /**
      * Constructs a new LifeProfile.
@@ -220,6 +221,21 @@ public final class LifeProfile {
     }
 
     /**
+     * Total lives this player has lost to deaths.
+     */
+    public int getLivesSpent() {
+        return livesSpent.get();
+    }
+
+    public void setLivesSpent(int spent) {
+        livesSpent.set(Math.max(0, spent));
+    }
+
+    public int incrementLivesSpent() {
+        return livesSpent.incrementAndGet();
+    }
+
+    /**
      * Creates an independent immutable snapshot copy of this profile.
      *
      * @return new LifeProfile snapshot
@@ -235,6 +251,7 @@ public final class LifeProfile {
                 lastName.get()
         );
         copy.setPardonNoticePending(pardonNoticePending.get());
+        copy.setLivesSpent(livesSpent.get());
         return copy;
     }
 

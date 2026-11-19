@@ -59,7 +59,7 @@ Outside arenas and outside a global PvP event:
 - Time only counts while the player is online and not AFK. A player is AFK after `afk-minutes` minutes (default 180) without moving. Set `afk-minutes` to `-1` to turn AFK detection off.
 - After a life is restored, the timer starts again from zero.
 - Players at `max-lives` do not accumulate time.
-- `/life` shows the current lives, time to the next life, the regeneration mode and the AFK state.
+- `/life` shows the current lives, time to the next life, the regeneration mode, the AFK state and the total lives spent on deaths.
 
 ### Ban and unban
 
@@ -133,7 +133,7 @@ On Paper, admin commands require the `lifesmp.admin` permission (default: operat
 
 | Command | Description | Permission (Paper) | Default access |
 |---|---|---|---|
-| `/life` | Show your lives, time to the next life, regeneration mode and AFK state | none | everyone |
+| `/life` | Show your lives, time to the next life, regeneration mode, AFK state and lives spent | none | everyone |
 | `/life help` | List available commands | none | everyone |
 | `/life gift <player>` | Offer one of your lives to an online player | none | everyone |
 | `/life accept` | Accept a pending life gift | none | everyone |

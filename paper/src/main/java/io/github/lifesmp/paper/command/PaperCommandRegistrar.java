@@ -328,6 +328,10 @@ public final class PaperCommandRegistrar {
             player.sendMessage(render(config, "info.afk-paused"));
         }
 
+        player.sendMessage(render(config, "info.lives-spent",
+                Placeholder.unparsed("count", String.valueOf(profile != null ? profile.getLivesSpent() : 0))
+        ));
+
         // Footer
         player.sendMessage(render(config, "info.footer"));
         return 1;

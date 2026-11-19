@@ -59,6 +59,18 @@ class SqliteRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("Players table persists the lives spent count")
+    void playerProfilePersistsLivesSpent() {
+        UUID playerUuid = UUID.randomUUID();
+        LifeProfile profile = new LifeProfile(playerUuid, 1, 0L, null, Instant.parse("2026-03-20T12:00:00Z"), false);
+        profile.setLivesSpent(2);
+
+        playerRepository.savePlayer(profile).join();
+
+        assertThat(playerRepository.loadPlayer(playerUuid).join().orElseThrow().getLivesSpent()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("Players table persists gift_regen_active flag and recovers state after server restart")
     void playerProfileSurvivesRestartWithGiftRegenFlag() {
         UUID playerUuid = UUID.randomUUID();

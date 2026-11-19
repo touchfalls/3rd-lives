@@ -300,6 +300,19 @@ class LifeEngineTest {
     }
 
     @Test
+    @DisplayName("Each death that costs a life adds one to the saved lives spent")
+    void deathCountsLivesSpent() {
+        UUID uuid = UUID.randomUUID();
+        dbStore.put(uuid, new LifeProfile(uuid, 3, 0L, null, now, false));
+        profileCache.getOrLoadProfile(uuid, config.getMaxLives(), now).join();
+
+        lifeEngine.handlePlayerDeath(uuid, "world", 0, 64, 0, null, now, config);
+        lifeEngine.handlePlayerDeath(uuid, "world", 0, 64, 0, null, now.plusSeconds(10), config);
+
+        assertThat(dbStore.get(uuid).getLivesSpent()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("Quitting saves the profile and removes it from memory")
     void quitSavesAndEvictsProfile() {
         UUID uuid = UUID.randomUUID();

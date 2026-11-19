@@ -42,7 +42,7 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
     @Override
     public CompletableFuture<Optional<LifeProfile>> loadPlayer(@NotNull UUID uuid) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "SELECT lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice FROM players WHERE uuid = ?;";
+            String sql = "SELECT lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice, lives_spent FROM players WHERE uuid = ?;";
             try (Connection conn = databaseManager.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, uuid.toString());
@@ -66,6 +66,7 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
                                 lastName
                         );
                         profile.setPardonNoticePending(rs.getInt("pardon_notice") != 0);
+                        profile.setLivesSpent(rs.getInt("lives_spent"));
                         return Optional.of(profile);
                     }
                 }
@@ -81,8 +82,8 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
     public CompletableFuture<Void> savePlayer(@NotNull LifeProfile profile) {
         return CompletableFuture.runAsync(() -> {
             String sql = """
-                    INSERT INTO players (uuid, lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO players (uuid, lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice, lives_spent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(uuid) DO UPDATE SET
                         lives = excluded.lives,
                         online_seconds_since_last_loss = excluded.online_seconds_since_last_loss,
@@ -90,7 +91,8 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
                         last_seen = excluded.last_seen,
                         gift_regen_active = excluded.gift_regen_active,
                         last_name = excluded.last_name,
-                        pardon_notice = excluded.pardon_notice;
+                        pardon_notice = excluded.pardon_notice,
+                        lives_spent = excluded.lives_spent;
                     """;
             try (Connection conn = databaseManager.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -110,8 +112,8 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
         }
         return CompletableFuture.runAsync(() -> {
             String sql = """
-                    INSERT INTO players (uuid, lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO players (uuid, lives, online_seconds_since_last_loss, banned_until, last_seen, gift_regen_active, last_name, pardon_notice, lives_spent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(uuid) DO UPDATE SET
                         lives = excluded.lives,
                         online_seconds_since_last_loss = excluded.online_seconds_since_last_loss,
@@ -119,7 +121,8 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
                         last_seen = excluded.last_seen,
                         gift_regen_active = excluded.gift_regen_active,
                         last_name = excluded.last_name,
-                        pardon_notice = excluded.pardon_notice;
+                        pardon_notice = excluded.pardon_notice,
+                        lives_spent = excluded.lives_spent;
                     """;
             try (Connection conn = databaseManager.getConnection()) {
                 conn.setAutoCommit(false);
@@ -233,6 +236,7 @@ public final class SqlitePlayerRepository implements PlayerRepository, AutoClose
             ps.setNull(7, Types.VARCHAR);
         }
         ps.setInt(8, profile.isPardonNoticePending() ? 1 : 0);
+        ps.setInt(9, profile.getLivesSpent());
     }
 
     @Override

@@ -274,6 +274,9 @@ public final class FabricCommandRegistrar<S> {
             adapter.sendFeedback(source, config.formatMessage("info.afk-paused"));
         }
 
+        adapter.sendFeedback(source, config.formatMessage("info.lives-spent",
+                "count", String.valueOf(profile != null ? profile.getLivesSpent() : 0)));
+
         // Footer
         adapter.sendFeedback(source, config.formatMessage("info.footer"));
         return 1;

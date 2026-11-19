@@ -315,6 +315,7 @@ public final class LifeEngine {
         // Lock so an autosave snapshot never sees the lost life without the ban.
         synchronized (profile) {
             remainingLives = profile.decrementLives();
+            profile.incrementLivesSpent();
             profile.resetOnlineSeconds();
             if (playerName != null && !playerName.isBlank()) {
                 profile.setLastName(playerName);

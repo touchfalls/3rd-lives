@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `/life` shows how many lives the player has lost to deaths in total. Arena deaths do not count. Counting starts when this version is installed.
+- Database schema version 5 with the `lives_spent` column in `players`.
+
 ## [1.1.3] - 2026-11-06
 
 ### Added
